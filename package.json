@@ -1,0 +1,17 @@
+{
+  "name": "@openhax/voice-gateway",
+  "version": "0.1.0",
+  "private": true,
+  "license": "GPL-3.0-only",
+  "type": "module",
+  "scripts": {
+    "dev": "PYTHONPATH=src python -m uvicorn voice_gateway.app:app --reload --host 0.0.0.0 --port ${VOICE_GATEWAY_PORT:-8788}",
+    "start": "PYTHONPATH=src python -m uvicorn voice_gateway.app:app --host 0.0.0.0 --port ${VOICE_GATEWAY_PORT:-8788}",
+    "build": "PYTHONPATH=src python -m compileall src",
+    "test": "PYTHONPATH=src python -m pytest",
+    "docker:publish-melo-base": "./scripts/publish-melo-base.sh",
+    "docker:build-image": "./scripts/build-image.sh",
+    "docker:publish-image": "./scripts/publish-image.sh",
+    "clean": "find src tests -type d -name '__pycache__' -prune -exec rm -rf {} +"
+  }
+}

@@ -1,0 +1,14 @@
+fastapi>=0.116,<1
+uvicorn[standard]>=0.35,<1
+python-multipart>=0.0.20,<1
+pydub>=0.25,<1
+faster-whisper>=1.1,<2
+langid>=1.1,<2
+pytest>=8,<9
+httpx>=0.28,<1
+
+# Optional runtime dependencies used by the extracted Fork Tales pipeline:
+# - torch
+# - MeloTTS (install from https://github.com/myshell-ai/MeloTTS)
+# - ffmpeg (system package)
+# - whisper.cpp binary + model (optional fallback)
