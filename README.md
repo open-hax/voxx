@@ -69,13 +69,14 @@ curl http://127.0.0.1:8788/healthz
 Expected health payload shape:
 
 ```json
-{"ok":true,"service":"voxx",...}
+{"ok":true,"service":"voxx"}
 ```
 
 Notes:
 - The Compose runtime installs `espeak-ng` + `ffmpeg` so TTS requests can fall back even when MeloTTS is not present.
 - `faster-whisper` is installed, but model weights may still download on first transcription use.
 - Override the default API token with `VOICE_GATEWAY_API_KEY=... docker compose up --build` if you do not want the dev default.
+- If port `8788` is already busy, run `VOXX_PORT=8798 docker compose up --build` (or choose another free host port).
 
 ## Docker + registry reuse
 This service reuses the existing registry-backed ML image `localhost:5000/shibboleth/ml-base:cuda12.4-2026-03-18` as the seed ML base for Melo workloads, then publishes a dedicated Melo-capable base into the local registry.
