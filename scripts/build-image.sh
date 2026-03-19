@@ -4,15 +4,15 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 SERVICE_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 REGISTRY_URL="${REGISTRY_URL:-localhost:5000}"
-VOICE_GATEWAY_TAG="${VOICE_GATEWAY_TAG:-latest}"
-VOICE_GATEWAY_BASE_IMAGE="${VOICE_GATEWAY_BASE_IMAGE:-${REGISTRY_URL}/openhax/melo-voice-base:2026-03-19}"
-VOICE_GATEWAY_IMAGE="${VOICE_GATEWAY_IMAGE:-${REGISTRY_URL}/openhax/voice-gateway:${VOICE_GATEWAY_TAG}}"
+VOXX_TAG="${VOXX_TAG:-${VOICE_GATEWAY_TAG:-latest}}"
+VOXX_BASE_IMAGE="${VOXX_BASE_IMAGE:-${VOICE_GATEWAY_BASE_IMAGE:-${REGISTRY_URL}/openhax/melo-voice-base:2026-03-19}}"
+VOXX_IMAGE="${VOXX_IMAGE:-${VOICE_GATEWAY_IMAGE:-${REGISTRY_URL}/openhax/voxx:${VOXX_TAG}}}"
 
 cd "$SERVICE_DIR"
 docker build \
   -f Dockerfile \
-  --build-arg VOICE_GATEWAY_BASE_IMAGE="$VOICE_GATEWAY_BASE_IMAGE" \
-  -t "$VOICE_GATEWAY_IMAGE" \
+  --build-arg VOXX_BASE_IMAGE="$VOXX_BASE_IMAGE" \
+  -t "$VOXX_IMAGE" \
   .
 
-echo "built: $VOICE_GATEWAY_IMAGE"
+echo "built: $VOXX_IMAGE"

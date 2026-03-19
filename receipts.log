@@ -1,1 +1,2 @@
 2026-03-19T01:16:13Z | kind=observation | origin=orgs/open-hax/voice-gateway | owner=err | dod=fork-tax-start | pi=pi | host=err-Stealth-16-AI-Studio-A1VGG | manifest=- | refs=Π+submodule-absorb | note=begin local Π snapshot to clean repo for devel submodule absorption
+2026-03-19T01:29:00Z | kind=observation | origin=orgs/open-hax/voice-gateway | owner=err | dod=spec-draft | pi=pi | host=err-Stealth-16-AI-Studio-A1VGG | manifest=- | refs=voxx-rename+compose | note=begin repo rename alignment to voxx plus compose runtime packaging

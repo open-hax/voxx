@@ -28,6 +28,10 @@ def build_client(tmp_path: Path) -> tuple[TestClient, StubTtsEngine, StubSttEngi
 def test_models_require_auth_and_return_catalog(tmp_path: Path) -> None:
     client, _tts_engine, _stt_engine = build_client(tmp_path)
 
+    health = client.get("/healthz")
+    assert health.status_code == 200
+    assert health.json()["service"] == "voxx"
+
     unauthorized = client.get("/v1/models")
     assert unauthorized.status_code == 401
 

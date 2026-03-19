@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1.7
 
-ARG VOICE_GATEWAY_BASE_IMAGE=localhost:5000/openhax/melo-voice-base:2026-03-19
-FROM ${VOICE_GATEWAY_BASE_IMAGE}
+ARG VOXX_BASE_IMAGE=localhost:5000/openhax/melo-voice-base:2026-03-19
+FROM ${VOXX_BASE_IMAGE}
 
 USER root
 WORKDIR /app

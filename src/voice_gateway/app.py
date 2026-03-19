@@ -115,7 +115,7 @@ async def _read_json_message(websocket: WebSocket) -> dict[str, Any] | None:
 def create_app(service: VoiceGatewayService | None = None) -> FastAPI:
     gateway = service or VoiceGatewayService.create_default()
     app = FastAPI(
-        title="OpenHax Voice Gateway",
+        title="OpenHax Voxx",
         description="Fork Tales voice pipeline extracted into an OpenAI-compatible and ElevenLabs-compatible service.",
         version="0.1.0",
     )
@@ -132,7 +132,7 @@ def create_app(service: VoiceGatewayService | None = None) -> FastAPI:
     async def healthz() -> dict[str, Any]:
         return {
             "ok": True,
-            "service": "voice-gateway",
+            "service": "voxx",
             "requires_api_key": bool(gateway.settings.api_key),
             "model_count": len(gateway.openai_models_payload()["data"]),
         }

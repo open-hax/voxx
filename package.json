@@ -1,5 +1,5 @@
 {
-  "name": "@openhax/voice-gateway",
+  "name": "@openhax/voxx",
   "version": "0.1.0",
   "private": true,
   "license": "GPL-3.0-only",
@@ -12,6 +12,8 @@
     "docker:publish-melo-base": "./scripts/publish-melo-base.sh",
     "docker:build-image": "./scripts/build-image.sh",
     "docker:publish-image": "./scripts/publish-image.sh",
+    "docker:compose:up": "docker compose up --build",
+    "docker:compose:down": "docker compose down --remove-orphans",
     "clean": "find src tests -type d -name '__pycache__' -prune -exec rm -rf {} +"
   }
 }

@@ -9,8 +9,8 @@ ENV RUSTUP_HOME=/opt/rustup
 ENV CARGO_HOME=/opt/cargo
 ENV PATH=/opt/cargo/bin:${PATH}
 
-WORKDIR /tmp/voice-gateway-base
-COPY requirements.txt /tmp/voice-gateway-base/requirements.txt
+WORKDIR /tmp/voxx-base
+COPY requirements.txt /tmp/voxx-base/requirements.txt
 
 RUN getent group 1000 >/dev/null || groupadd -g 1000 appuser \
     && id -u appuser >/dev/null 2>&1 || useradd -m -u 1000 -g 1000 appuser
@@ -30,7 +30,7 @@ RUN if [ ! -x /opt/cargo/bin/rustc ]; then \
       curl https://sh.rustup.rs -sSf | sh -s -- -y --profile minimal --default-toolchain 1.88.0; \
     fi
 
-RUN pip3 install --no-cache-dir -r /tmp/voice-gateway-base/requirements.txt \
+RUN pip3 install --no-cache-dir -r /tmp/voxx-base/requirements.txt \
     && pip3 install --no-cache-dir \
       pydub \
       librosa==0.9.1 \
@@ -81,8 +81,8 @@ for path in site.getsitepackages():
         break
 PY
 )" \
-    && chown -R appuser:appuser /app /opt/MeloTTS "${MELO_SITE_PACKAGES}/melo" /tmp/voice-gateway-base
+    && chown -R appuser:appuser /app /opt/MeloTTS "${MELO_SITE_PACKAGES}/melo" /tmp/voxx-base
 
-LABEL org.opencontainers.image.title="OpenHax Melo Voice Base" \
+LABEL org.opencontainers.image.title="OpenHax Voxx Melo Base" \
       org.opencontainers.image.description="Registry-backed reusable MeloTTS/faster-whisper base image for OpenHax voice workloads" \
-      org.opencontainers.image.source="orgs/open-hax/openhax/services/voice-gateway/Dockerfile.melo-base"
+      org.opencontainers.image.source="orgs/open-hax/voxx/Dockerfile.melo-base"

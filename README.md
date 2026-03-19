@@ -1,6 +1,6 @@
-# @openhax/voice-gateway
+# @openhax/voxx
 
-Fork Tales voice pipeline extracted into a standalone Open Hax service package.
+Fork Tales voice pipeline extracted into the standalone Open Hax service package now aligned with the upstream repo name: `voxx`.
 
 ## What it provides
 - Local TTS pipeline extracted from `vaults/fork_tales/part64/code/tts_service.py`
@@ -58,13 +58,32 @@ Tests:
 pnpm test
 ```
 
+## Docker Compose
+For a self-contained local runtime that does not depend on the pre-published Melo base image:
+
+```bash
+docker compose up --build -d
+curl http://127.0.0.1:8788/healthz
+```
+
+Expected health payload shape:
+
+```json
+{"ok":true,"service":"voxx",...}
+```
+
+Notes:
+- The Compose runtime installs `espeak-ng` + `ffmpeg` so TTS requests can fall back even when MeloTTS is not present.
+- `faster-whisper` is installed, but model weights may still download on first transcription use.
+- Override the default API token with `VOICE_GATEWAY_API_KEY=... docker compose up --build` if you do not want the dev default.
+
 ## Docker + registry reuse
 This service reuses the existing registry-backed ML image `localhost:5000/shibboleth/ml-base:cuda12.4-2026-03-18` as the seed ML base for Melo workloads, then publishes a dedicated Melo-capable base into the local registry.
 
 Registry-backed images:
 - Reused ML base: `localhost:5000/shibboleth/ml-base:cuda12.4-2026-03-18`
 - Melo-capable base: `localhost:5000/openhax/melo-voice-base:2026-03-19`
-- Service image target: `localhost:5000/openhax/voice-gateway:latest`
+- Service image target: `localhost:5000/openhax/voxx:latest`
 
 Build/publish the Melo base from the reused registry ML base:
 ```bash
@@ -85,7 +104,7 @@ Run the published service image:
 ```bash
 docker run --rm -p 8788:8788 \
   -e VOICE_GATEWAY_API_KEY=dev-token \
-  localhost:5000/openhax/voice-gateway:latest
+  localhost:5000/openhax/voxx:latest
 ```
 
 ## Auth
