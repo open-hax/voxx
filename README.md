@@ -78,6 +78,65 @@ Notes:
 - Override the default API token with `VOICE_GATEWAY_API_KEY=... docker compose up --build` if you do not want the dev default.
 - If port `8788` is already busy, run `VOXX_PORT=8798 docker compose up --build` (or choose another free host port).
 
+## Smart TTS backend order
+
+Voxx now chooses a backend order instead of hard-wiring itself to Melo/espeak only.
+
+Default order when credentials exist:
+
+1. `elevenlabs`
+2. `requesty`
+3. `openai`
+4. `melo`
+5. `espeak`
+
+Override the order explicitly with:
+
+```bash
+VOICE_GATEWAY_TTS_BACKEND_ORDER=requesty,melo,espeak
+```
+
+Useful env knobs:
+
+```bash
+# provider order / timeouts
+VOICE_GATEWAY_TTS_BACKEND_ORDER=requesty,melo,espeak
+VOICE_GATEWAY_TTS_REMOTE_TIMEOUT_SECONDS=45
+
+# Requesty/OpenAI-compatible remote fallback
+REQUESTY_API_TOKEN=...
+REQUESTY_TTS_BASE_URL=https://router.requesty.ai/v1/audio/speech
+REQUESTY_TTS_MODEL=openai/gpt-4o-mini-tts
+REQUESTY_TTS_VOICE=ash
+
+# OpenAI direct fallback
+OPENAI_API_KEY=...
+OPENAI_TTS_BASE_URL=https://api.openai.com/v1/audio/speech
+OPENAI_TTS_MODEL=gpt-4o-mini-tts
+OPENAI_TTS_VOICE=ash
+
+# ElevenLabs premium target voice
+ELEVENLABS_API_KEY=...
+ELEVENLABS_TTS_BASE_URL=https://api.elevenlabs.io/v1
+ELEVENLABS_TTS_MODEL=eleven_turbo_v2_5
+ELEVENLABS_VOICE_ID=<voice-id>
+```
+
+Voxx also exposes the backend actually used for a synthesis request through the response header:
+
+- `x-openhax-tts-backend`
+
+That lets Battlebussy keep pointing at Voxx while Voxx quietly upgrades from local Melo/espeak to Requesty or ElevenLabs when those creds are available.
+
+## Provider research snapshot
+
+Quick 2026-03-20 findings from a live crawl of `models.dev` plus provider docs:
+
+- **Cloudflare Workers AI / AI Gateway — MyShell MeloTTS**: models.dev lists `@cf/myshell-ai/melotts` / `workers-ai/@cf/myshell-ai/melotts` at `$0.00` listed token cost, making it the most interesting free-ish hosted fallback candidate to validate next.
+- **Requesty**: already compatible with Voxx because it exposes an OpenAI-style `/v1/audio/speech` route; best current near-drop-in option when the token is available.
+- **Google Gemini preview TTS** and **Qwen Omni audio models** show up in models.dev, but they are not free and/or are more audio-native than simple drop-in TTS today.
+- **ElevenLabs** remains the highest-value final target when a specific sponsored voice is available; Voxx now has a clean env path for that exact voice ID later.
+
 ## Docker + registry reuse
 This service reuses the existing registry-backed ML image `localhost:5000/shibboleth/ml-base:cuda12.4-2026-03-18` as the seed ML base for Melo workloads, then publishes a dedicated Melo-capable base into the local registry.
 
