@@ -1,16 +1,15 @@
 # Π handoff
 
-- time: 2026-03-20T15:28:56Z
+- time: 2026-03-20T16:33:23Z
 - branch: main
-- pre-Π HEAD: 8bcabe3
+- pre-Π HEAD: c58ca40
 - Π HEAD: pending at capture time; resolved by the final git commit created after artifact assembly
 
 ## Summary
-- Add pkg-config/libssl-dev to the Melo base image and simplify Python site-packages discovery so the base image is less brittle across environments.
-- Preserve the already-verified source/runtime split where services/voxx owns compose workflows while the source repo stays focused on code and base-image inputs.
-- Capture the current local-only voxx repo state in .ημ artifacts so the root workspace can update its file-backed gitlink deterministically.
+- Amend the local-only voxx snapshot so the Melo base image resolves Python site-packages via sysconfig purelib instead of scanning site.getsitepackages().
+- Keep the source/runtime split intact while tightening the Dockerfile path lookup that copies the Melo package into the runtime image.
+- Refresh receipts and .ημ artifacts so the root workspace points at the latest clean local-only voxx snapshot.
 
 ## Verification
 - pass: pnpm test (6 passed)
-- pass: services/voxx compose health+speech from 2026-03-19T15:05:41Z receipt
 - note: origin is a self-referential file:// remote; snapshot remains local-only by design
