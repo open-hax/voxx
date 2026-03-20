@@ -22,6 +22,8 @@ RUN apt-get update \
       mecab \
       libmecab-dev \
       curl \
+      pkg-config \
+      libssl-dev \
       build-essential \
       git \
     && rm -rf /var/lib/apt/lists/*
@@ -60,27 +62,13 @@ RUN pip3 install --no-cache-dir -r /tmp/voxx-base/requirements.txt \
 RUN if [ ! -d /opt/MeloTTS ]; then \
       git clone --depth=1 https://github.com/myshell-ai/MeloTTS.git /opt/MeloTTS; \
     fi \
-    && MELO_SITE_PACKAGES="$(python - <<'PY'
-import site
-for path in site.getsitepackages():
-    if 'site-packages' in path:
-        print(path)
-        break
-PY
-)" \
+    && MELO_SITE_PACKAGES="$(python3 -c \"import site; print(next(path for path in site.getsitepackages() if 'site-packages' in path))\")" \
     && cp -R /opt/MeloTTS/melo "${MELO_SITE_PACKAGES}/melo" \
     && python3 -m unidic download \
     && python3 /opt/MeloTTS/melo/init_downloads.py
 
 RUN mkdir -p /app/data /app/src \
-    && MELO_SITE_PACKAGES="$(python - <<'PY'
-import site
-for path in site.getsitepackages():
-    if 'site-packages' in path:
-        print(path)
-        break
-PY
-)" \
+    && MELO_SITE_PACKAGES="$(python3 -c \"import site; print(next(path for path in site.getsitepackages() if 'site-packages' in path))\")" \
     && chown -R appuser:appuser /app /opt/MeloTTS "${MELO_SITE_PACKAGES}/melo" /tmp/voxx-base
 
 LABEL org.opencontainers.image.title="OpenHax Voxx Melo Base" \
