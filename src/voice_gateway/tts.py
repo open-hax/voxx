@@ -92,6 +92,28 @@ class LocalTtsEngine:
             )
         return ",".join(filters)
 
+    def _build_output_postprocess_filter_chain(self) -> str:
+        profile = self.settings.active_tts_postprocess_profile()
+        if not profile:
+            return ""
+        if profile == "sports-commentator-v1":
+            # Conservative broadcast-style mastering that survives current ffmpeg builds
+            # and works across local + remote provider outputs.
+            return ",".join(
+                [
+                    "highpass=f=90",
+                    "lowpass=f=13500",
+                    "equalizer=f=180:t=q:w=0.8:g=1.5",
+                    "equalizer=f=2600:t=q:w=1.1:g=3.8",
+                    "equalizer=f=4200:t=q:w=1.0:g=4.2",
+                    "equalizer=f=7800:t=q:w=1.2:g=1.2",
+                    "acompressor=threshold=0.18:ratio=3.5:attack=5:release=80:makeup=2.0:knee=2.5:link=average:detection=rms",
+                    "alimiter=limit=0.93",
+                    "volume=1.8dB",
+                ]
+            )
+        return ""
+
     def _render_with_ffmpeg(self, input_path: Path, output_path: Path, filters: str) -> bool:
         if not self.settings.ffmpeg_bin:
             return False
@@ -447,6 +469,7 @@ class LocalTtsEngine:
         normalized_format = normalize_audio_format(response_format or self.settings.default_audio_format)
         failures: list[str] = []
         self.last_backend = ""
+        output_postprocess_filters = self._build_output_postprocess_filter_chain()
 
         for backend in self.settings.preferred_tts_backends():
             try:
@@ -503,6 +526,7 @@ class LocalTtsEngine:
                     source_format=source_format,
                     target_format=normalized_format,
                     ffmpeg_bin=self.settings.ffmpeg_bin,
+                    audio_filters=output_postprocess_filters,
                 )
                 return output_bytes, normalized_format
             except Exception as exc:

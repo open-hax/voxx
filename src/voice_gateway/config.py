@@ -56,6 +56,23 @@ def _normalize_tts_backend_name(name: str) -> str:
     return aliases.get(value, value)
 
 
+def _normalize_tts_postprocess_profile_name(name: str) -> str:
+    value = name.strip().lower().replace("_", "-").replace(" ", "-")
+    aliases = {
+        "": "",
+        "off": "",
+        "none": "",
+        "disabled": "",
+        "sports": "sports-commentator-v1",
+        "broadcast": "sports-commentator-v1",
+        "sports-commentator": "sports-commentator-v1",
+        "sports-commentary": "sports-commentator-v1",
+        "broadcast-sports": "sports-commentator-v1",
+        "sports-commentator-v1": "sports-commentator-v1",
+    }
+    return aliases.get(value, value)
+
+
 @dataclass
 class Settings:
     host: str = field(default_factory=lambda: str(os.getenv("VOICE_GATEWAY_HOST", "0.0.0.0") or "0.0.0.0"))
@@ -81,6 +98,8 @@ class Settings:
     elevenlabs_tts_base_url: str = field(default_factory=lambda: str(os.getenv("ELEVENLABS_TTS_BASE_URL", "https://api.elevenlabs.io/v1") or "https://api.elevenlabs.io/v1").strip().rstrip("/"))
     elevenlabs_tts_model: str = field(default_factory=lambda: str(os.getenv("ELEVENLABS_TTS_MODEL", "eleven_turbo_v2_5") or "eleven_turbo_v2_5").strip())
     elevenlabs_voice_id: str = field(default_factory=lambda: str(os.getenv("ELEVENLABS_VOICE_ID", "") or "").strip())
+    tts_postprocess_enabled: bool = field(default_factory=lambda: _env_bool("TTS_POSTPROCESS_ENABLED", True))
+    tts_postprocess_profile: str = field(default_factory=lambda: _normalize_tts_postprocess_profile_name(str(os.getenv("TTS_POSTPROCESS_PROFILE", "sports-commentator-v1") or "sports-commentator-v1")))
     tts_narrator_unifier_enabled: bool = field(default_factory=lambda: _env_bool("TTS_NARRATOR_UNIFIER_ENABLED", True))
     tts_narrator_target_dbfs: float = field(default_factory=lambda: _env_float("TTS_NARRATOR_TARGET_DBFS", -18.0, -30.0, -8.0))
     tts_narrator_en_pitch: float = field(default_factory=lambda: _env_float("TTS_NARRATOR_EN_PITCH", 1.02, 0.9, 1.1))
@@ -131,6 +150,11 @@ class Settings:
             if backend and backend not in deduped:
                 deduped.append(backend)
         return tuple(deduped)
+
+    def active_tts_postprocess_profile(self) -> str:
+        if not self.tts_postprocess_enabled:
+            return ""
+        return _normalize_tts_postprocess_profile_name(self.tts_postprocess_profile)
 
 
 _SETTINGS: Settings | None = None

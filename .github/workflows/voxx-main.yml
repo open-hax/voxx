@@ -1,0 +1,128 @@
+name: voxx-main
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: voxx-main-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  PYTHON_VERSION: "3.12"
+  IMAGE_NAME: ghcr.io/${{ github.repository }}
+
+jobs:
+  test-and-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Install test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt pytest
+
+      - name: Run unit tests
+        run: PYTHONPATH=src python -m pytest
+
+      - name: Smoke-build compose image
+        run: docker build -f Dockerfile.compose -t voxx-ci:${{ github.sha }} .
+
+  publish-image:
+    needs: test-and-smoke
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile.compose
+          push: true
+          tags: |
+            ${{ env.IMAGE_NAME }}:main
+            ${{ env.IMAGE_NAME }}:sha-${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy-production:
+    needs: publish-image
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      DEPLOY_HOST: ${{ vars.VOXX_DEPLOY_HOST }}
+      DEPLOY_USER: ${{ vars.VOXX_DEPLOY_USER }}
+      DEPLOY_PORT: ${{ vars.VOXX_DEPLOY_PORT || '22' }}
+      DEPLOY_DIR: ${{ vars.VOXX_DEPLOY_PATH || '/home/error/devel/services/voxx' }}
+      HEALTH_URL: ${{ vars.VOXX_HEALTH_URL || 'http://127.0.0.1:8788/healthz' }}
+      DEPLOY_IMAGE: ghcr.io/${{ github.repository }}:sha-${{ github.sha }}
+    steps:
+      - name: Validate deploy configuration
+        run: |
+          test -n "$DEPLOY_HOST"
+          test -n "$DEPLOY_USER"
+          test -n "$DEPLOY_DIR"
+          test -n "${{ secrets.VOXX_DEPLOY_SSH_KEY }}"
+
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@v1.2.0
+        env:
+          DEPLOY_DIR: ${{ env.DEPLOY_DIR }}
+          DEPLOY_IMAGE: ${{ env.DEPLOY_IMAGE }}
+          HEALTH_URL: ${{ env.HEALTH_URL }}
+          GHCR_USERNAME: ${{ secrets.VOXX_GHCR_USERNAME }}
+          GHCR_TOKEN: ${{ secrets.VOXX_GHCR_TOKEN }}
+        with:
+          host: ${{ env.DEPLOY_HOST }}
+          username: ${{ env.DEPLOY_USER }}
+          port: ${{ env.DEPLOY_PORT }}
+          key: ${{ secrets.VOXX_DEPLOY_SSH_KEY }}
+          envs: DEPLOY_DIR,DEPLOY_IMAGE,HEALTH_URL,GHCR_USERNAME,GHCR_TOKEN
+          script: |
+            set -euo pipefail
+            cd "$DEPLOY_DIR"
+            printf 'VOXX_IMAGE=%s\n' "$DEPLOY_IMAGE" > .env.deploy
+
+            set -a
+            [ -f ./.env ] && . ./.env
+            . ./.env.deploy
+            set +a
+
+            if [ -n "${GHCR_USERNAME:-}" ] && [ -n "${GHCR_TOKEN:-}" ]; then
+              printf '%s' "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USERNAME" --password-stdin
+            fi
+
+            docker compose pull voxx
+            docker compose up -d --no-build voxx
+            docker compose ps voxx
+            curl -fsS "$HEALTH_URL"

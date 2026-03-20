@@ -78,6 +78,39 @@ Notes:
 - Override the default API token with `VOICE_GATEWAY_API_KEY=... docker compose up --build` if you do not want the dev default.
 - If port `8788` is already busy, run `VOXX_PORT=8798 docker compose up --build` (or choose another free host port).
 
+## Deploy from pushes to `main`
+
+A GitHub Actions pipeline now lives at:
+
+- `.github/workflows/voxx-main.yml`
+
+Flow:
+
+1. On pull requests and pushes, run pytest and smoke-build `Dockerfile.compose`.
+2. On `main`, publish `ghcr.io/<owner>/<repo>:main` and `ghcr.io/<owner>/<repo>:sha-<commit>`.
+3. Over SSH, write a remote `.env.deploy` containing the immutable `VOXX_IMAGE=...:sha-<commit>` pin.
+4. On the host, source the existing `.env` plus `.env.deploy`, pull the image, restart Voxx without rebuilding, and verify `/healthz`.
+
+Required GitHub configuration:
+
+### Repository variables
+- `VOXX_DEPLOY_HOST`
+- `VOXX_DEPLOY_USER`
+- `VOXX_DEPLOY_PORT` (optional, default `22`)
+- `VOXX_DEPLOY_PATH` (optional, default `/home/error/devel/services/voxx`)
+- `VOXX_HEALTH_URL` (optional, default `http://127.0.0.1:8788/healthz`)
+
+### Repository secrets
+- `VOXX_DEPLOY_SSH_KEY`
+- `VOXX_GHCR_USERNAME` (optional if the package is public)
+- `VOXX_GHCR_TOKEN` (optional if the package is public)
+
+Remote host expectations:
+- `docker` + `docker compose` installed
+- runtime lives in `~/devel/services/voxx`
+- remote `.env` keeps runtime secrets/tokens
+- workflow-owned `.env.deploy` only pins the image tag and should not be edited manually
+
 ## Smart TTS backend order
 
 Voxx now chooses a backend order instead of hard-wiring itself to Melo/espeak only.
@@ -127,6 +160,33 @@ Voxx also exposes the backend actually used for a synthesis request through the 
 - `x-openhax-tts-backend`
 
 That lets Battlebussy keep pointing at Voxx while Voxx quietly upgrades from local Melo/espeak to Requesty or ElevenLabs when those creds are available.
+
+## Sports commentator postprocess
+
+Yes: Voxx already had a conservative narrator-unifier lineage from `vaults/fork_tales/part64/code/tts_service.py`.
+
+What changed here is that Voxx now has a **final backend-agnostic postprocess stage** so the same commentator-style mastering can shape audio from any TTS backend, not just local Melo.
+
+Default profile:
+
+```bash
+TTS_POSTPROCESS_ENABLED=1
+TTS_POSTPROCESS_PROFILE=sports-commentator-v1
+```
+
+Current profile behavior is intentionally conservative and speech-safe:
+- presence / intelligibility EQ lift
+- light broadcast-style compression
+- limiter + output gain
+- keeps existing local narrator unifier for Melo while also styling remote-provider output
+
+Disable it completely with:
+
+```bash
+TTS_POSTPROCESS_ENABLED=0
+```
+
+This means `requesty`, `openai`, `elevenlabs`, `melo`, and even `espeak` fallback outputs can all be pushed toward the same high-energy sports-commentary texture through Voxx.
 
 ## Provider research snapshot
 

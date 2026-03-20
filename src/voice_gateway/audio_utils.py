@@ -89,10 +89,12 @@ def convert_audio_bytes(
     source_format: str,
     target_format: str,
     ffmpeg_bin: str,
+    audio_filters: str = "",
 ) -> bytes:
     normalized_source = normalize_audio_format(source_format)
     normalized_target = normalize_audio_format(target_format)
-    if normalized_source == normalized_target:
+    normalized_filters = str(audio_filters or "").strip()
+    if normalized_source == normalized_target and not normalized_filters:
         return audio_bytes
     if not ffmpeg_bin:
         return audio_bytes
@@ -114,6 +116,9 @@ def convert_audio_bytes(
             "-i",
             str(source_path),
         ]
+
+        if normalized_filters:
+            command += ["-af", normalized_filters]
 
         if normalized_target == "pcm":
             command += ["-f", "s16le", "-acodec", "pcm_s16le", "-ac", "1", "-ar", "24000"]
