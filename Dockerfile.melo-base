@@ -65,7 +65,8 @@ RUN if [ ! -d /opt/MeloTTS ]; then \
     && MELO_SITE_PACKAGES="$(python3 -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])')" \
     && cp -R /opt/MeloTTS/melo "${MELO_SITE_PACKAGES}/melo" \
     && python3 -m unidic download \
-    && python3 /opt/MeloTTS/melo/init_downloads.py
+    && python3 /opt/MeloTTS/melo/init_downloads.py \
+    && python3 -c "import nltk; nltk.download('averaged_perceptron_tagger_eng')"
 
 RUN mkdir -p /app/data /app/src \
     && MELO_SITE_PACKAGES="$(python3 -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])')" \
