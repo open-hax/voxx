@@ -19,6 +19,7 @@ class VoiceProfile:
     use_speaker_boost: bool = True
     labels: dict[str, str] = field(default_factory=dict)
     aliases: tuple[str, ...] = tuple()
+    provider_voice_ids: dict[str, str] = field(default_factory=dict)
 
     def matches(self, voice_id: str) -> bool:
         target = voice_id.strip().lower()
@@ -35,6 +36,9 @@ class VoiceProfile:
             "speed": self.speed_multiplier,
         }
 
+    def provider_voice(self, provider: str) -> str | None:
+        return self.provider_voice_ids.get(provider.strip().lower())
+
 
 VOICE_PROFILES: tuple[VoiceProfile, ...] = (
     VoiceProfile(
@@ -44,6 +48,7 @@ VOICE_PROFILES: tuple[VoiceProfile, ...] = (
         description="Neutral OpenAI-compatible default voice",
         aliases=("rachel", "bella"),
         labels={"accent": "neutral", "provider": "openai+elevenlabs-compatible"},
+        provider_voice_ids={"openai": "alloy", "requesty": "alloy"},
     ),
     VoiceProfile(
         id="nova",
@@ -53,8 +58,9 @@ VOICE_PROFILES: tuple[VoiceProfile, ...] = (
         speed_multiplier=1.03,
         stability=0.62,
         style=0.18,
-        aliases=("aria", "serena"),
+        aliases=("aria", "serena", "ash"),
         labels={"accent": "bright", "provider": "openai+elevenlabs-compatible"},
+        provider_voice_ids={"openai": "ash", "requesty": "ash"},
     ),
     VoiceProfile(
         id="onyx",
@@ -66,6 +72,7 @@ VOICE_PROFILES: tuple[VoiceProfile, ...] = (
         style=0.08,
         aliases=("adam", "antoni"),
         labels={"accent": "low", "provider": "openai+elevenlabs-compatible"},
+        provider_voice_ids={"openai": "echo", "requesty": "echo"},
     ),
     VoiceProfile(
         id="shimmer",
@@ -77,6 +84,7 @@ VOICE_PROFILES: tuple[VoiceProfile, ...] = (
         style=0.24,
         aliases=("elli", "dorothy"),
         labels={"accent": "airy", "provider": "openai+elevenlabs-compatible"},
+        provider_voice_ids={"openai": "shimmer", "requesty": "shimmer"},
     ),
     VoiceProfile(
         id="echo",
@@ -88,6 +96,7 @@ VOICE_PROFILES: tuple[VoiceProfile, ...] = (
         style=0.06,
         aliases=("sam", "josh"),
         labels={"accent": "steady", "provider": "openai+elevenlabs-compatible"},
+        provider_voice_ids={"openai": "echo", "requesty": "echo"},
     ),
     VoiceProfile(
         id="sage",
@@ -99,6 +108,7 @@ VOICE_PROFILES: tuple[VoiceProfile, ...] = (
         style=0.05,
         aliases=("george",),
         labels={"accent": "measured", "provider": "openai-compatible"},
+        provider_voice_ids={"openai": "sage", "requesty": "sage"},
     ),
     VoiceProfile(
         id="kaede",
@@ -110,6 +120,7 @@ VOICE_PROFILES: tuple[VoiceProfile, ...] = (
         style=0.16,
         aliases=("ja_default", "sakura"),
         labels={"accent": "jp", "provider": "openhax"},
+        provider_voice_ids={"openai": "alloy", "requesty": "alloy"},
     ),
 )
 

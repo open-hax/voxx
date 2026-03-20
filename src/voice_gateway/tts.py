@@ -10,6 +10,8 @@ import threading
 from pathlib import Path
 from typing import Any
 
+import httpx
+
 from .audio_utils import convert_audio_bytes, normalize_audio_format
 from .catalog import VoiceProfile
 from .config import Settings, get_settings
@@ -24,6 +26,7 @@ class LocalTtsEngine:
     def __init__(self, settings: Settings | None = None):
         self.settings = settings or get_settings()
         self.device = self._resolve_device()
+        self.last_backend = ""
         if self.settings.tts_eager_load:
             self._load_models()
 
@@ -273,6 +276,146 @@ class LocalTtsEngine:
             combined.export(str(cache_path), format="wav")
             return cache_path.read_bytes()
 
+    def _remote_voice_candidates(
+        self,
+        voice: VoiceProfile,
+        *,
+        backend: str,
+        requested_voice_id: str | None,
+        default_voice: str | None,
+    ) -> list[str]:
+        candidates: list[str] = []
+        raw_requested = str(requested_voice_id or "").strip()
+        if raw_requested:
+            candidates.append(raw_requested)
+        mapped = voice.provider_voice(backend)
+        if mapped:
+            candidates.append(mapped)
+        candidates.append(default_voice or "")
+        if backend in {"requesty", "openai"}:
+            candidates.append(voice.id)
+
+        deduped: list[str] = []
+        for candidate in candidates:
+            normalized = candidate.strip()
+            if normalized and normalized not in deduped:
+                deduped.append(normalized)
+        return deduped
+
+    def _synthesize_with_openai_compatible(
+        self,
+        *,
+        backend: str,
+        api_key: str,
+        base_url: str,
+        model: str,
+        default_voice: str,
+        text: str,
+        voice: VoiceProfile,
+        requested_voice_id: str | None,
+        speed: float,
+        response_format: str,
+    ) -> tuple[bytes, str]:
+        if not api_key or not base_url:
+            raise RuntimeError(f"{backend} is not configured")
+
+        request_format = response_format if response_format in {"mp3", "wav", "flac", "opus", "pcm"} else "mp3"
+        candidates = self._remote_voice_candidates(
+            voice,
+            backend=backend,
+            requested_voice_id=requested_voice_id,
+            default_voice=default_voice,
+        )
+        if not candidates:
+            raise RuntimeError(f"{backend} has no usable voice candidate")
+
+        errors: list[str] = []
+        with httpx.Client(timeout=self.settings.tts_remote_timeout_seconds) as client:
+            for voice_id in candidates:
+                try:
+                    response = client.post(
+                        base_url,
+                        headers={
+                            "Authorization": f"Bearer {api_key}",
+                            "Content-Type": "application/json",
+                        },
+                        json={
+                            "model": model,
+                            "input": text,
+                            "voice": voice_id,
+                            "response_format": request_format,
+                            "speed": float(speed),
+                        },
+                    )
+                    response.raise_for_status()
+                    return response.content, request_format
+                except httpx.HTTPStatusError as exc:
+                    errors.append(f"voice={voice_id} status={exc.response.status_code}")
+                    if exc.response.status_code in {400, 404, 422} and len(candidates) > 1:
+                        continue
+                    break
+                except httpx.HTTPError as exc:
+                    errors.append(f"voice={voice_id} error={exc.__class__.__name__}")
+                    break
+        detail = "; ".join(errors) if errors else "request failed"
+        raise RuntimeError(f"{backend} failed ({detail})")
+
+    def _synthesize_with_elevenlabs(
+        self,
+        text: str,
+        voice: VoiceProfile,
+        *,
+        requested_voice_id: str | None,
+        speed: float,
+    ) -> tuple[bytes, str]:
+        if not self.settings.elevenlabs_api_key:
+            raise RuntimeError("elevenlabs is not configured")
+
+        candidates = self._remote_voice_candidates(
+            voice,
+            backend="elevenlabs",
+            requested_voice_id=requested_voice_id,
+            default_voice=self.settings.elevenlabs_voice_id,
+        )
+        if not candidates:
+            raise RuntimeError("elevenlabs has no usable voice candidate")
+
+        errors: list[str] = []
+        with httpx.Client(timeout=self.settings.tts_remote_timeout_seconds) as client:
+            for voice_id in candidates:
+                try:
+                    response = client.post(
+                        f"{self.settings.elevenlabs_tts_base_url}/text-to-speech/{voice_id}",
+                        params={"output_format": "mp3_44100_128"},
+                        headers={
+                            "xi-api-key": self.settings.elevenlabs_api_key,
+                            "Content-Type": "application/json",
+                        },
+                        json={
+                            "text": text,
+                            "model_id": self.settings.elevenlabs_tts_model,
+                            "voice_settings": {
+                                "stability": voice.stability,
+                                "similarity_boost": voice.similarity_boost,
+                                "style": voice.style,
+                                "use_speaker_boost": voice.use_speaker_boost,
+                                "speed": max(0.6, min(1.2, speed * voice.speed_multiplier)),
+                            },
+                        },
+                    )
+                    response.raise_for_status()
+                    return response.content, "mp3"
+                except httpx.HTTPStatusError as exc:
+                    errors.append(f"voice={voice_id} status={exc.response.status_code}")
+                    if exc.response.status_code in {400, 404, 422} and len(candidates) > 1:
+                        continue
+                    break
+                except httpx.HTTPError as exc:
+                    errors.append(f"voice={voice_id} error={exc.__class__.__name__}")
+                    break
+        detail = "; ".join(errors) if errors else "request failed"
+        raise RuntimeError(f"elevenlabs failed ({detail})")
+
     def _synthesize_with_espeak(self, text: str, *, speed: float) -> bytes | None:
         command_candidates = (
             ["espeak-ng"],
@@ -299,20 +442,77 @@ class LocalTtsEngine:
         response_format: str = "mp3",
         speed: float = 1.0,
         language: str | None = None,
+        requested_voice_id: str | None = None,
     ) -> tuple[bytes, str]:
         normalized_format = normalize_audio_format(response_format or self.settings.default_audio_format)
-        wav_bytes = self._synthesize_with_melo(text, voice, speed=speed, language=language)
-        if wav_bytes is None:
-            wav_bytes = self._synthesize_with_espeak(text, speed=speed)
-        if wav_bytes is None:
-            raise RuntimeError("No TTS backend available. Install MeloTTS or espeak-ng.")
-        output_bytes = convert_audio_bytes(
-            wav_bytes,
-            source_format="wav",
-            target_format=normalized_format,
-            ffmpeg_bin=self.settings.ffmpeg_bin,
+        failures: list[str] = []
+        self.last_backend = ""
+
+        for backend in self.settings.preferred_tts_backends():
+            try:
+                source_bytes: bytes | None = None
+                source_format = "wav"
+                if backend == "melo":
+                    source_bytes = self._synthesize_with_melo(text, voice, speed=speed, language=language)
+                elif backend == "espeak":
+                    source_bytes = self._synthesize_with_espeak(text, speed=speed)
+                elif backend == "requesty":
+                    source_bytes, source_format = self._synthesize_with_openai_compatible(
+                        backend="requesty",
+                        api_key=self.settings.requesty_api_token,
+                        base_url=self.settings.requesty_tts_base_url,
+                        model=self.settings.requesty_tts_model,
+                        default_voice=self.settings.requesty_tts_voice,
+                        text=text,
+                        voice=voice,
+                        requested_voice_id=requested_voice_id,
+                        speed=speed,
+                        response_format=normalized_format,
+                    )
+                elif backend == "openai":
+                    source_bytes, source_format = self._synthesize_with_openai_compatible(
+                        backend="openai",
+                        api_key=self.settings.openai_api_key,
+                        base_url=self.settings.openai_tts_base_url,
+                        model=self.settings.openai_tts_model,
+                        default_voice=self.settings.openai_tts_voice,
+                        text=text,
+                        voice=voice,
+                        requested_voice_id=requested_voice_id,
+                        speed=speed,
+                        response_format=normalized_format,
+                    )
+                elif backend == "elevenlabs":
+                    source_bytes, source_format = self._synthesize_with_elevenlabs(
+                        text,
+                        voice,
+                        requested_voice_id=requested_voice_id,
+                        speed=speed,
+                    )
+                else:
+                    failures.append(f"{backend}: unsupported backend")
+                    continue
+
+                if source_bytes is None:
+                    failures.append(f"{backend}: unavailable")
+                    continue
+
+                self.last_backend = backend
+                output_bytes = convert_audio_bytes(
+                    source_bytes,
+                    source_format=source_format,
+                    target_format=normalized_format,
+                    ffmpeg_bin=self.settings.ffmpeg_bin,
+                )
+                return output_bytes, normalized_format
+            except Exception as exc:
+                failures.append(f"{backend}: {exc}")
+
+        raise RuntimeError(
+            "No TTS backend available. " + "; ".join(failures)
+            if failures
+            else "No TTS backend available. Install MeloTTS or espeak-ng."
         )
-        return output_bytes, normalized_format
 
 
 class StubTtsEngine:
@@ -320,6 +520,7 @@ class StubTtsEngine:
         self.audio_bytes = audio_bytes or b"ID3stub-audio"
         self.audio_format = audio_format
         self.calls: list[dict[str, Any]] = []
+        self.last_backend = "stub"
 
     def synthesize(
         self,
@@ -329,11 +530,13 @@ class StubTtsEngine:
         response_format: str = "mp3",
         speed: float = 1.0,
         language: str | None = None,
+        requested_voice_id: str | None = None,
     ) -> tuple[bytes, str]:
         self.calls.append(
             {
                 "text": text,
                 "voice": voice.id,
+                "requested_voice_id": requested_voice_id,
                 "response_format": response_format,
                 "speed": speed,
                 "language": language,

@@ -62,7 +62,10 @@ def test_openai_speech_endpoint_returns_audio_bytes(tmp_path: Path) -> None:
     assert response.content == b"ID3stub-audio"
     assert response.headers["content-type"].startswith("audio/mpeg")
     assert response.headers["x-openhax-voice-id"] == "nova"
+    assert response.headers["x-openhax-tts-backend"] == "stub"
+    assert response.headers["x-openhax-requested-voice-id"] == "nova"
     assert tts_engine.calls[0]["text"] == "hello from openhax"
+    assert tts_engine.calls[0]["requested_voice_id"] == "nova"
 
 
 def test_openai_transcription_and_translation_routes(tmp_path: Path) -> None:

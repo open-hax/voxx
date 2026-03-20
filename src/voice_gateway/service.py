@@ -92,11 +92,17 @@ class VoiceGatewayService:
             response_format=response_format,
             speed=speed,
             language=language,
+            requested_voice_id=voice_id,
         )
         headers = {
             "x-openhax-voice-id": voice.id,
             "x-openhax-audio-format": normalized_format,
         }
+        backend = str(getattr(self.tts_engine, "last_backend", "") or "").strip()
+        if backend:
+            headers["x-openhax-tts-backend"] = backend
+        if voice_id:
+            headers["x-openhax-requested-voice-id"] = voice_id
         return audio_bytes, normalized_format, headers
 
     def synthesize_elevenlabs(
