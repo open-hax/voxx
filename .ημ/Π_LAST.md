@@ -1,15 +1,15 @@
 # Π handoff
 
-- time: 2026-03-20T16:33:23Z
+- time: 2026-03-21T02:16:46Z
 - branch: main
-- pre-Π HEAD: c58ca40
+- pre-Π HEAD: c682b8f
 - Π HEAD: pending at capture time; resolved by the final git commit created after artifact assembly
 
 ## Summary
-- Amend the local-only voxx snapshot so the Melo base image resolves Python site-packages via sysconfig purelib instead of scanning site.getsitepackages().
-- Keep the source/runtime split intact while tightening the Dockerfile path lookup that copies the Melo package into the runtime image.
-- Refresh receipts and .ημ artifacts so the root workspace points at the latest clean local-only voxx snapshot.
+- Capture the Battlebussy Melo realtime benchmark spec and raw benchmark artifact from pve.ussy.cloud.
+- Record the remote-host deployment and live Battlebussy cutover receipts so the current Voxx state is auditable.
+- Preserve the repository as a deterministic snapshot before any further voice-pipeline changes.
 
 ## Verification
-- pass: pnpm test (6 passed)
-- note: origin is a self-referential file:// remote; snapshot remains local-only by design
+- pass: pnpm test (12 passed)
+- pass: git diff --check

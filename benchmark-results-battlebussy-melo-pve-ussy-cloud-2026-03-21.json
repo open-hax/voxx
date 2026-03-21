@@ -1,0 +1,176 @@
+{
+  "ts": "2026-03-21T01:05:36.240345+00:00",
+  "host": "pve.ussy.cloud",
+  "voice": "nova",
+  "speed": 1.05,
+  "model": "gpt-4o-mini-tts",
+  "results": [
+    {
+      "bucket": "short",
+      "index": 1,
+      "latency_s": 2.887753600254655,
+      "duration_s": 4.336327,
+      "rtf": 0.6659446117081703,
+      "backend": "melo",
+      "bytes": 34917
+    },
+    {
+      "bucket": "short",
+      "index": 2,
+      "latency_s": 3.056170793250203,
+      "duration_s": 4.179592,
+      "rtf": 0.7312127100564368,
+      "backend": "melo",
+      "bytes": 33663
+    },
+    {
+      "bucket": "short",
+      "index": 3,
+      "latency_s": 3.045384708791971,
+      "duration_s": 4.127347,
+      "rtf": 0.7378552636335086,
+      "backend": "melo",
+      "bytes": 33245
+    },
+    {
+      "bucket": "short",
+      "index": 4,
+      "latency_s": 3.4094524681568146,
+      "duration_s": 4.127347,
+      "rtf": 0.8260639263325362,
+      "backend": "melo",
+      "bytes": 33245
+    },
+    {
+      "bucket": "short",
+      "index": 5,
+      "latency_s": 3.586291879415512,
+      "duration_s": 4.414694,
+      "rtf": 0.8123534449761438,
+      "backend": "melo",
+      "bytes": 35544
+    },
+    {
+      "bucket": "medium",
+      "index": 1,
+      "latency_s": 5.995058799162507,
+      "duration_s": 7.57551,
+      "rtf": 0.7913736235794695,
+      "backend": "melo",
+      "bytes": 60831
+    },
+    {
+      "bucket": "medium",
+      "index": 2,
+      "latency_s": 4.932748379185796,
+      "duration_s": 7.288163,
+      "rtf": 0.6768164185111936,
+      "backend": "melo",
+      "bytes": 58532
+    },
+    {
+      "bucket": "medium",
+      "index": 3,
+      "latency_s": 5.275537895038724,
+      "duration_s": 6.844082,
+      "rtf": 0.7708174587970634,
+      "backend": "melo",
+      "bytes": 54979
+    },
+    {
+      "bucket": "medium",
+      "index": 4,
+      "latency_s": 5.5306650921702385,
+      "duration_s": 7.131429,
+      "rtf": 0.77553392064483,
+      "backend": "melo",
+      "bytes": 57278
+    },
+    {
+      "bucket": "medium",
+      "index": 5,
+      "latency_s": 5.96707514859736,
+      "duration_s": 7.000816,
+      "rtf": 0.8523399484570597,
+      "backend": "melo",
+      "bytes": 56233
+    },
+    {
+      "bucket": "long",
+      "index": 1,
+      "latency_s": 13.047313574701548,
+      "duration_s": 13.583673,
+      "rtf": 0.9605144039245901,
+      "backend": "melo",
+      "bytes": 108896
+    },
+    {
+      "bucket": "long",
+      "index": 2,
+      "latency_s": 11.455249132588506,
+      "duration_s": 13.374694,
+      "rtf": 0.8564868200041441,
+      "backend": "melo",
+      "bytes": 107224
+    },
+    {
+      "bucket": "long",
+      "index": 3,
+      "latency_s": 10.02824879065156,
+      "duration_s": 12.146939,
+      "rtf": 0.8255782621985308,
+      "backend": "melo",
+      "bytes": 97402
+    },
+    {
+      "bucket": "long",
+      "index": 4,
+      "latency_s": 11.526774514466524,
+      "duration_s": 12.878367,
+      "rtf": 0.8950493889843738,
+      "backend": "melo",
+      "bytes": 103253
+    },
+    {
+      "bucket": "long",
+      "index": 5,
+      "latency_s": 8.38465416058898,
+      "duration_s": 10.501224,
+      "rtf": 0.7984454155619364,
+      "backend": "melo",
+      "bytes": 84236
+    }
+  ],
+  "summary": {
+    "short": {
+      "count": 5,
+      "latency_avg_s": 3.197,
+      "latency_p50_s": 3.056,
+      "latency_p95_s": 3.409,
+      "duration_avg_s": 4.237,
+      "rtf_avg": 0.755,
+      "rtf_best": 0.666,
+      "rtf_worst": 0.826
+    },
+    "medium": {
+      "count": 5,
+      "latency_avg_s": 5.54,
+      "latency_p50_s": 5.531,
+      "latency_p95_s": 5.967,
+      "duration_avg_s": 7.168,
+      "rtf_avg": 0.773,
+      "rtf_best": 0.677,
+      "rtf_worst": 0.852
+    },
+    "long": {
+      "count": 5,
+      "latency_avg_s": 10.888,
+      "latency_p50_s": 11.455,
+      "latency_p95_s": 11.527,
+      "duration_avg_s": 12.497,
+      "rtf_avg": 0.867,
+      "rtf_best": 0.798,
+      "rtf_worst": 0.961
+    }
+  }
+}
