@@ -1,15 +1,17 @@
 # Π handoff
 
-- time: 2026-03-21T02:16:46Z
+- time: 2026-03-21T19:39:29Z
 - branch: main
-- pre-Π HEAD: c682b8f
-- Π HEAD: pending at capture time; resolved by the final git commit created after artifact assembly
+- pre-Π HEAD: a13ad1f
+- Π HEAD: pending at capture time; resolved by the final commit after artifact assembly
 
 ## Summary
-- Capture the Battlebussy Melo realtime benchmark spec and raw benchmark artifact from pve.ussy.cloud.
-- Record the remote-host deployment and live Battlebussy cutover receipts so the current Voxx state is auditable.
-- Preserve the repository as a deterministic snapshot before any further voice-pipeline changes.
+- Persist Voxx documentation/spec updates that retarget the extracted Fork Tales lineage from vaults/fork_tales to orgs/octave-commons/fork_tales.
+- Keep the current source tree auditable after the Fork Tales canonical repo relocation without changing Voxx runtime behavior.
+
+## Notes
+- push branch: pi/fork-tax/2026-03-21-193439
+- origin remains git@github.com:open-hax/voxx.git; snapshot published on a dedicated Π branch plus tag.
 
 ## Verification
-- pass: pnpm test (12 passed)
-- pass: git diff --check
+- pass: pnpm test
