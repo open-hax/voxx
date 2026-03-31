@@ -7,7 +7,7 @@ Complete
 Add a backend-agnostic post-processing pipeline in Voxx so any synthesized voice can be shaped toward a high-energy sports commentator sound, regardless of whether the upstream audio came from Melo, espeak, Requesty, OpenAI, or ElevenLabs.
 
 ## Background
-- Voxx already contains a conservative narrator unifier inherited from `vaults/fork_tales/part64/code/tts_service.py`.
+- Voxx already contains a conservative narrator unifier inherited from `orgs/octave-commons/fork_tales/part64/code/tts_service.py`.
 - Today that shaping is applied only inside the local Melo synthesis path.
 - Remote-provider voices currently bypass that styling and only get format conversion.
 - The user wants a reusable commentator-style postprocess for any voice served through Voxx.

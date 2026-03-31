@@ -1,15 +1,18 @@
 # Π handoff
 
-- time: 2026-03-21T02:16:46Z
+- time: 2026-03-21T21:33:31Z
 - branch: main
-- pre-Π HEAD: c682b8f
-- Π HEAD: pending at capture time; resolved by the final git commit created after artifact assembly
+- pre-Π HEAD: 7df28c5
+- Π HEAD: pending at capture time; resolved by the final commit after artifact assembly
 
 ## Summary
-- Capture the Battlebussy Melo realtime benchmark spec and raw benchmark artifact from pve.ussy.cloud.
-- Record the remote-host deployment and live Battlebussy cutover receipts so the current Voxx state is auditable.
-- Preserve the repository as a deterministic snapshot before any further voice-pipeline changes.
+- Add the source-side benchmark harness scripts/benchmark_openai_speech.py and the big.ussy/ussy2 Melo postprocess benchmark draft for reproducible cross-host comparison work.
+- Refresh receipts and .ημ handoff artifacts so the root workspace can carry the exact Voxx benchmark-planning snapshot.
+
+## Notes
+- push branch: pi/fork-tax/2026-03-21-211345
+- origin remains git@github.com:open-hax/voxx.git; snapshot published on a dedicated Π branch plus tag.
 
 ## Verification
 - pass: pnpm test (12 passed)
-- pass: git diff --check
+- pass: python3 -m py_compile scripts/benchmark_openai_speech.py

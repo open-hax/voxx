@@ -3,8 +3,8 @@
 Fork Tales voice pipeline extracted into the standalone Open Hax service package now aligned with the upstream repo name: `voxx`.
 
 ## What it provides
-- Local TTS pipeline extracted from `vaults/fork_tales/part64/code/tts_service.py`
-- Local STT pipeline extracted from `vaults/fork_tales/part64/code/world_web/ai.py`
+- Local TTS pipeline extracted from `orgs/octave-commons/fork_tales/part64/code/tts_service.py`
+- Local STT pipeline extracted from `orgs/octave-commons/fork_tales/part64/code/world_web/ai.py`
 - OpenAI-compatible voice endpoints
 - ElevenLabs-style compatibility endpoints
 - Requesty/OpenAI-client compatibility via `/v1/*` OpenAI audio routes
@@ -163,7 +163,7 @@ That lets Battlebussy keep pointing at Voxx while Voxx quietly upgrades from loc
 
 ## Sports commentator postprocess
 
-Yes: Voxx already had a conservative narrator-unifier lineage from `vaults/fork_tales/part64/code/tts_service.py`.
+Yes: Voxx already had a conservative narrator-unifier lineage from `orgs/octave-commons/fork_tales/part64/code/tts_service.py`.
 
 What changed here is that Voxx now has a **final backend-agnostic postprocess stage** so the same commentator-style mastering can shape audio from any TTS backend, not just local Melo.
 
