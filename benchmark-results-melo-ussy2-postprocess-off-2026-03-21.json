@@ -1,0 +1,194 @@
+{
+  "ts": "2026-03-21T22:43:20.333597+00:00",
+  "host": "ussy2.promethean.rest",
+  "variant": "postprocess-off",
+  "base_url": "http://100.84.133.21:8788",
+  "voice": "nova",
+  "speed": 1.05,
+  "model": "gpt-4o-mini-tts",
+  "response_format": "mp3",
+  "results": [
+    {
+      "bucket": "short",
+      "index": 1,
+      "text": "Welcome back to Battlebussy, where the arena is hot and the next clash is seconds away!",
+      "latency_s": 10.629649689013604,
+      "duration_s": 5.642449,
+      "rtf": 1.8838716466934133,
+      "backend": "melo",
+      "bytes": 45366
+    },
+    {
+      "bucket": "short",
+      "index": 2,
+      "text": "Huge knockback to center stage and the crowd knows this round just turned brutal!",
+      "latency_s": 9.137841839983594,
+      "duration_s": 5.01551,
+      "rtf": 1.8219167821385251,
+      "backend": "melo",
+      "bytes": 40351
+    },
+    {
+      "bucket": "short",
+      "index": 3,
+      "text": "That dodge was filthy, that punish was immediate, and momentum just flipped hard!",
+      "latency_s": 9.761665322002955,
+      "duration_s": 5.407347,
+      "rtf": 1.8052596443326008,
+      "backend": "melo",
+      "bytes": 43485
+    },
+    {
+      "bucket": "short",
+      "index": 4,
+      "text": "Blue side steals the pickup, powers the combo, and suddenly the whole bracket is shaking!",
+      "latency_s": 10.43605593900429,
+      "duration_s": 5.825306,
+      "rtf": 1.7915034744963252,
+      "backend": "melo",
+      "bytes": 46829
+    },
+    {
+      "bucket": "short",
+      "index": 5,
+      "text": "One clean confirm, one roaring finish, and the fans are absolutely losing it right now!",
+      "latency_s": 10.338935883017257,
+      "duration_s": 5.746939,
+      "rtf": 1.7990335173241365,
+      "backend": "melo",
+      "bytes": 46202
+    },
+    {
+      "bucket": "medium",
+      "index": 1,
+      "text": "What a swing in the lane fight: red side looked cornered for a full ten seconds, then snapped back with perfect timing and turned defense into a full-court punish.",
+      "latency_s": 16.289651178987697,
+      "duration_s": 8.75102,
+      "rtf": 1.8614574277041642,
+      "backend": "melo",
+      "bytes": 70235
+    },
+    {
+      "bucket": "medium",
+      "index": 2,
+      "text": "You can feel the tension climbing because every pickup matters now, every reposition matters now, and one sloppy engage could hand the whole set to the other side.",
+      "latency_s": 18.111187259986764,
+      "duration_s": 9.508571,
+      "rtf": 1.904722303697029,
+      "backend": "melo",
+      "bytes": 76295
+    },
+    {
+      "bucket": "medium",
+      "index": 3,
+      "text": "That was textbook pressure into chaos: quick spacing, instant conversion, and then a relentless finish that left the rest of the lobby scrambling to recover.",
+      "latency_s": 18.275572874990758,
+      "duration_s": 9.639184,
+      "rtf": 1.8959668033093628,
+      "backend": "melo",
+      "bytes": 77340
+    },
+    {
+      "bucket": "medium",
+      "index": 4,
+      "text": "Battlebussy is at its loudest when momentum changes this fast, and right now the winning side is stacking confidence with every clean rotation and every sharp read.",
+      "latency_s": 17.79684518702561,
+      "duration_s": 9.482449,
+      "rtf": 1.8768194995855616,
+      "backend": "melo",
+      "bytes": 76086
+    },
+    {
+      "bucket": "medium",
+      "index": 5,
+      "text": "If they keep chaining these short explosive bursts together, the other squad is going to run out of answers before the next checkpoint even appears.",
+      "latency_s": 15.460178679000819,
+      "duration_s": 8.437551,
+      "rtf": 1.8323063977925373,
+      "backend": "melo",
+      "bytes": 67727
+    },
+    {
+      "bucket": "long",
+      "index": 1,
+      "text": "This is the exact kind of Battlebussy sequence the fans replay all night long: a risky approach at mid, a scramble around the objective, and then a perfectly timed counterburst that turns a messy brawl into a statement play with championship energy.",
+      "latency_s": 33.60672503898968,
+      "duration_s": 14.654694,
+      "rtf": 2.2932396294995776,
+      "backend": "melo",
+      "bytes": 117464
+    },
+    {
+      "bucket": "long",
+      "index": 2,
+      "text": "The pressure is building across the whole map now because every movement has consequences, every missed punish opens a lane, and the squad with the hotter hands is starting to sound like a freight train rolling straight through the bracket.",
+      "latency_s": 28.80952355399495,
+      "duration_s": 12.8,
+      "rtf": 2.2507440276558555,
+      "backend": "melo",
+      "bytes": 102627
+    },
+    {
+      "bucket": "long",
+      "index": 3,
+      "text": "Listen to the rhythm of this round: quick engage, clean disengage, another explosive re-entry, and then a thunderous finish that makes it obvious one team is reading the flow a full beat faster than everyone else in the arena.",
+      "latency_s": 30.334584696014645,
+      "duration_s": 12.982857,
+      "rtf": 2.336510730728579,
+      "backend": "melo",
+      "bytes": 104089
+    },
+    {
+      "bucket": "long",
+      "index": 4,
+      "text": "When Battlebussy gets this dramatic, the announcer barely has time to breathe: one side steals space, the other side steals tempo, and then somebody lands a finishing sequence so violent the crowd erupts before the scoreboard can even catch up.",
+      "latency_s": 33.063136095996015,
+      "duration_s": 13.818776,
+      "rtf": 2.3926240714804274,
+      "backend": "melo",
+      "bytes": 110777
+    },
+    {
+      "bucket": "long",
+      "index": 5,
+      "text": "This is turning into a pure endurance test, because the attacks are still sharp, the reactions are still instant, and the team that keeps landing these high-energy conversions is making the whole match feel like a runaway headline.",
+      "latency_s": 29.4398918459774,
+      "duration_s": 12.8,
+      "rtf": 2.2999915504669843,
+      "backend": "melo",
+      "bytes": 102627
+    }
+  ],
+  "summary": {
+    "short": {
+      "count": 5,
+      "latency_avg_s": 10.061,
+      "latency_p50_s": 10.339,
+      "latency_p95_s": 10.63,
+      "duration_avg_s": 5.528,
+      "rtf_avg": 1.82,
+      "rtf_best": 1.792,
+      "rtf_worst": 1.884
+    },
+    "medium": {
+      "count": 5,
+      "latency_avg_s": 17.187,
+      "latency_p50_s": 17.797,
+      "latency_p95_s": 18.276,
+      "duration_avg_s": 9.164,
+      "rtf_avg": 1.874,
+      "rtf_best": 1.832,
+      "rtf_worst": 1.905
+    },
+    "long": {
+      "count": 5,
+      "latency_avg_s": 31.051,
+      "latency_p50_s": 30.335,
+      "latency_p95_s": 33.607,
+      "duration_avg_s": 13.411,
+      "rtf_avg": 2.315,
+      "rtf_best": 2.251,
+      "rtf_worst": 2.393
+    }
+  }
+}
