@@ -117,24 +117,43 @@ Voxx now chooses a backend order instead of hard-wiring itself to Melo/espeak on
 
 Default order when credentials exist:
 
-1. `elevenlabs`
-2. `requesty`
-3. `openai`
-4. `melo`
-5. `espeak`
+1. `xiaomi_mimo`
+2. `kokoro`
+3. `requesty`
+4. `openai`
+5. `melo`
+6. `espeak`
+
+The workspace compose default is `xiaomi_mimo,kokoro,melo,espeak`; ElevenLabs is intentionally not in that runtime default.
 
 Override the order explicitly with:
 
 ```bash
-VOICE_GATEWAY_TTS_BACKEND_ORDER=requesty,melo,espeak
+VOICE_GATEWAY_TTS_BACKEND_ORDER=xiaomi_mimo,kokoro,melo,espeak
 ```
 
 Useful env knobs:
 
 ```bash
 # provider order / timeouts
-VOICE_GATEWAY_TTS_BACKEND_ORDER=requesty,melo,espeak
+VOICE_GATEWAY_TTS_BACKEND_ORDER=xiaomi_mimo,kokoro,melo,espeak
 VOICE_GATEWAY_TTS_REMOTE_TIMEOUT_SECONDS=45
+
+# Xiaomi MiMo chat/audio bridge
+XIAOMI_MIMO_API_BASE_URL=https://api.xiaomimimo.com/v1
+XIAOMI_MIMO_API_KEY=...
+XIAOMI_MIMO_TTS_MODEL=mimo-v2.5-tts
+XIAOMI_MIMO_TTS_VOICE=mimo_default
+XIAOMI_MIMO_TTS_STYLE=Speak naturally and clearly.
+
+# Legacy typo-prefixed local env names still work while migrating:
+XAIOMI_MIMO_API_BASE_URL=https://api.xiaomimimo.com/v1
+XAIOMI_MIMO_API_KEY=...
+
+# Kokoro OpenAI-compatible local sidecar
+KOKORO_TTS_BASE_URL=http://kokoro:8880/v1/audio/speech
+KOKORO_TTS_MODEL=kokoro
+KOKORO_TTS_VOICE=af_bella_725_H
 
 # Requesty/OpenAI-compatible remote fallback
 REQUESTY_API_TOKEN=...
@@ -147,19 +166,13 @@ OPENAI_API_KEY=...
 OPENAI_TTS_BASE_URL=https://api.openai.com/v1/audio/speech
 OPENAI_TTS_MODEL=gpt-4o-mini-tts
 OPENAI_TTS_VOICE=ash
-
-# ElevenLabs premium target voice
-ELEVENLABS_API_KEY=...
-ELEVENLABS_TTS_BASE_URL=https://api.elevenlabs.io/v1
-ELEVENLABS_TTS_MODEL=eleven_turbo_v2_5
-ELEVENLABS_VOICE_ID=<voice-id>
 ```
 
 Voxx also exposes the backend actually used for a synthesis request through the response header:
 
 - `x-openhax-tts-backend`
 
-That lets Battlebussy keep pointing at Voxx while Voxx quietly upgrades from local Melo/espeak to Requesty or ElevenLabs when those creds are available.
+That lets callers keep pointing at Voxx while Voxx quietly upgrades from local fallback audio to Xiaomi MiMo, Kokoro, Requesty, or OpenAI when those backends are available.
 
 ## Sports commentator postprocess
 
@@ -186,7 +199,7 @@ Disable it completely with:
 TTS_POSTPROCESS_ENABLED=0
 ```
 
-This means `requesty`, `openai`, `elevenlabs`, `melo`, and even `espeak` fallback outputs can all be pushed toward the same high-energy sports-commentary texture through Voxx.
+This means `xiaomi_mimo`, `kokoro`, `requesty`, `openai`, `melo`, and even `espeak` fallback outputs can all be pushed toward the same high-energy sports-commentary texture through Voxx.
 
 ## Provider research snapshot
 

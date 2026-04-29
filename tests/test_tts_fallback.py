@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 from pathlib import Path
 
 from voice_gateway.catalog import resolve_voice
@@ -25,6 +26,16 @@ def test_settings_backend_order_respects_explicit_override(tmp_path: Path) -> No
     )
 
     assert settings.preferred_tts_backends() == ("melo", "requesty", "espeak")
+
+
+def test_settings_backend_order_prefers_xiaomi_mimo_when_configured(tmp_path: Path) -> None:
+    settings = Settings(
+        data_dir=tmp_path / "runtime",
+        xiaomi_mimo_api_key="mimo-token",
+        requesty_api_token="requesty-token",
+    )
+
+    assert settings.preferred_tts_backends() == ("xiaomi_mimo", "kokoro", "requesty", "melo", "espeak")
 
 
 def test_kokoro_openai_compatible_backend_does_not_require_api_key(tmp_path: Path, monkeypatch) -> None:
@@ -76,6 +87,81 @@ def test_kokoro_openai_compatible_backend_does_not_require_api_key(tmp_path: Pat
     assert engine.last_backend == "kokoro"
     assert captured["url"] == "http://kokoro.test/v1/audio/speech"
     assert captured["headers"] == {"Content-Type": "application/json"}
+
+
+def test_xiaomi_mimo_tts_uses_chat_audio_bridge(tmp_path: Path, monkeypatch) -> None:
+    settings = Settings(
+        data_dir=tmp_path / "runtime",
+        xiaomi_mimo_api_key="mimo-token",
+        xiaomi_mimo_api_base_url="https://mimo.test/v1",
+        xiaomi_mimo_tts_model="mimo-v2.5-tts",
+        xiaomi_mimo_tts_voice="mimo_default",
+        xiaomi_mimo_tts_style="Speak warmly.",
+        tts_backend_order=("xiaomi_mimo",),
+        ffmpeg_bin="",
+    )
+    engine = LocalTtsEngine(settings)
+    voice = resolve_voice("alloy")
+    captured: dict[str, object] = {}
+
+    class FakeResponse:
+        def raise_for_status(self) -> None:
+            return None
+
+        def json(self) -> dict[str, object]:
+            return {
+                "choices": [
+                    {
+                        "message": {
+                            "audio": {"data": base64.b64encode(b"mimo-mp3").decode("ascii")}
+                        }
+                    }
+                ]
+            }
+
+    class FakeClient:
+        def __init__(self, timeout: float):
+            captured["timeout"] = timeout
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return None
+
+        def post(self, url: str, *, headers: dict[str, str], json: dict[str, object]):
+            captured["url"] = url
+            captured["headers"] = headers
+            captured["json"] = json
+            return FakeResponse()
+
+    monkeypatch.setattr(tts_module.httpx, "Client", FakeClient)
+    monkeypatch.setattr(tts_module, "convert_audio_bytes", lambda audio_bytes, **_kwargs: audio_bytes)
+
+    audio_bytes, fmt = engine.synthesize(
+        "mimo hello",
+        voice=voice,
+        response_format="mp3",
+        requested_voice_id="Mia",
+    )
+
+    assert audio_bytes == b"mimo-mp3"
+    assert fmt == "mp3"
+    assert engine.last_backend == "xiaomi_mimo"
+    assert captured["url"] == "https://mimo.test/v1/chat/completions"
+    assert captured["headers"] == {
+        "Authorization": "Bearer mimo-token",
+        "api-key": "mimo-token",
+        "Content-Type": "application/json",
+    }
+    assert captured["json"] == {
+        "model": "mimo-v2.5-tts",
+        "messages": [
+            {"role": "user", "content": "Speak warmly."},
+            {"role": "assistant", "content": "mimo hello"},
+        ],
+        "audio": {"voice": "Mia", "format": "mp3"},
+    }
 
 
 def test_local_tts_engine_falls_back_after_remote_error(tmp_path: Path, monkeypatch) -> None:

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import hashlib
 import math
 import re
@@ -384,6 +385,72 @@ class LocalTtsEngine:
         detail = "; ".join(errors) if errors else "request failed"
         raise RuntimeError(f"{backend} failed ({detail})")
 
+    def _synthesize_with_xiaomi_mimo(
+        self,
+        *,
+        text: str,
+        voice: VoiceProfile,
+        requested_voice_id: str | None,
+        response_format: str,
+    ) -> tuple[bytes, str]:
+        if not self.settings.xiaomi_mimo_api_key or not self.settings.xiaomi_mimo_api_base_url:
+            raise RuntimeError("xiaomi_mimo is not configured")
+
+        request_format = response_format if response_format in {"mp3", "wav"} else "mp3"
+        candidates = self._remote_voice_candidates(
+            voice,
+            backend="xiaomi_mimo",
+            requested_voice_id=requested_voice_id,
+            default_voice=self.settings.xiaomi_mimo_tts_voice,
+        )
+        if not candidates:
+            raise RuntimeError("xiaomi_mimo has no usable voice candidate")
+
+        base_url = self.settings.xiaomi_mimo_api_base_url.rstrip("/")
+        chat_url = f"{base_url}/chat/completions"
+        style = self.settings.xiaomi_mimo_tts_style or "Speak naturally and clearly."
+        errors: list[str] = []
+        with httpx.Client(timeout=self.settings.tts_remote_timeout_seconds) as client:
+            for voice_id in candidates:
+                try:
+                    response = client.post(
+                        chat_url,
+                        headers={
+                            "Authorization": f"Bearer {self.settings.xiaomi_mimo_api_key}",
+                            "api-key": self.settings.xiaomi_mimo_api_key,
+                            "Content-Type": "application/json",
+                        },
+                        json={
+                            "model": self.settings.xiaomi_mimo_tts_model,
+                            "messages": [
+                                {"role": "user", "content": style},
+                                {"role": "assistant", "content": text},
+                            ],
+                            "audio": {"voice": voice_id, "format": request_format},
+                        },
+                    )
+                    response.raise_for_status()
+                    payload = response.json()
+                    message = payload.get("choices", [{}])[0].get("message", {})
+                    audio = message.get("audio") or {}
+                    audio_data = str(audio.get("data") or "")
+                    if not audio_data:
+                        raise RuntimeError("missing audio data")
+                    return base64.b64decode(audio_data), request_format
+                except httpx.HTTPStatusError as exc:
+                    errors.append(f"voice={voice_id} status={exc.response.status_code}")
+                    if exc.response.status_code in {400, 404, 422} and len(candidates) > 1:
+                        continue
+                    break
+                except (ValueError, RuntimeError) as exc:
+                    errors.append(f"voice={voice_id} error={exc}")
+                    break
+                except httpx.HTTPError as exc:
+                    errors.append(f"voice={voice_id} error={exc.__class__.__name__}")
+                    break
+        detail = "; ".join(errors) if errors else "request failed"
+        raise RuntimeError(f"xiaomi_mimo failed ({detail})")
+
     def _synthesize_with_elevenlabs(
         self,
         text: str,
@@ -490,6 +557,13 @@ class LocalTtsEngine:
                         voice=voice,
                         requested_voice_id=requested_voice_id,
                         speed=speed,
+                        response_format=normalized_format,
+                    )
+                elif backend == "xiaomi_mimo":
+                    source_bytes, source_format = self._synthesize_with_xiaomi_mimo(
+                        text=text,
+                        voice=voice,
+                        requested_voice_id=requested_voice_id,
                         response_format=normalized_format,
                     )
                 elif backend == "espeak":

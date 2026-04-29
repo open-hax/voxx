@@ -52,8 +52,25 @@ def _normalize_tts_backend_name(name: str) -> str:
         "local": "melo",
         "local_melo": "melo",
         "espeak": "espeak",
+        "kokoro": "kokoro",
+        "mimo": "xiaomi_mimo",
+        "mimo_tts": "xiaomi_mimo",
+        "xiaomi": "xiaomi_mimo",
+        "xiaomi_mimo": "xiaomi_mimo",
+        "xiaomi-mimo": "xiaomi_mimo",
+        "xaiomi": "xiaomi_mimo",
+        "xaiomi_mimo": "xiaomi_mimo",
+        "xaiomi-mimo": "xiaomi_mimo",
     }
     return aliases.get(value, value)
+
+
+def _env_first(names: tuple[str, ...], default: str = "") -> str:
+    for name in names:
+        raw = str(os.getenv(name, "") or "").strip()
+        if raw:
+            return raw
+    return default
 
 
 def _normalize_tts_postprocess_profile_name(name: str) -> str:
@@ -94,6 +111,15 @@ class Settings:
     openai_tts_base_url: str = field(default_factory=lambda: str(os.getenv("OPENAI_TTS_BASE_URL", "https://api.openai.com/v1/audio/speech") or "https://api.openai.com/v1/audio/speech").strip())
     openai_tts_model: str = field(default_factory=lambda: str(os.getenv("OPENAI_TTS_MODEL", "gpt-4o-mini-tts") or "gpt-4o-mini-tts").strip())
     openai_tts_voice: str = field(default_factory=lambda: str(os.getenv("OPENAI_TTS_VOICE", "ash") or "ash").strip())
+    xiaomi_mimo_api_key: str = field(default_factory=lambda: _env_first(("XIAOMI_MIMO_API_KEY", "XAIOMI_MIMO_API_KEY")))
+    xiaomi_mimo_api_base_url: str = field(default_factory=lambda: _env_first(("XIAOMI_MIMO_API_BASE_URL", "XAIOMI_MIMO_API_BASE_URL"), "https://api.xiaomimimo.com/v1").rstrip("/"))
+    xiaomi_mimo_tts_model: str = field(default_factory=lambda: str(os.getenv("XIAOMI_MIMO_TTS_MODEL", os.getenv("XAIOMI_MIMO_TTS_MODEL", "mimo-v2.5-tts")) or "mimo-v2.5-tts").strip())
+    xiaomi_mimo_tts_voice: str = field(default_factory=lambda: str(os.getenv("XIAOMI_MIMO_TTS_VOICE", os.getenv("XAIOMI_MIMO_TTS_VOICE", "mimo_default")) or "mimo_default").strip())
+    xiaomi_mimo_tts_style: str = field(default_factory=lambda: str(os.getenv("XIAOMI_MIMO_TTS_STYLE", os.getenv("XAIOMI_MIMO_TTS_STYLE", "Speak naturally and clearly.")) or "Speak naturally and clearly.").strip())
+    kokoro_api_key: str = field(default_factory=lambda: str(os.getenv("KOKORO_API_KEY", "") or "").strip())
+    kokoro_tts_base_url: str = field(default_factory=lambda: str(os.getenv("KOKORO_TTS_BASE_URL", "http://kokoro:8000/v1/audio/speech") or "http://kokoro:8000/v1/audio/speech").strip().rstrip("/"))
+    kokoro_tts_model: str = field(default_factory=lambda: str(os.getenv("KOKORO_TTS_MODEL", "kokoro") or "kokoro").strip())
+    kokoro_tts_voice: str = field(default_factory=lambda: str(os.getenv("KOKORO_TTS_VOICE", "af_bella_725_H") or "af_bella_725_H").strip())
     elevenlabs_api_key: str = field(default_factory=lambda: str(os.getenv("ELEVENLABS_API_KEY", "") or "").strip())
     elevenlabs_tts_base_url: str = field(default_factory=lambda: str(os.getenv("ELEVENLABS_TTS_BASE_URL", "https://api.elevenlabs.io/v1") or "https://api.elevenlabs.io/v1").strip().rstrip("/"))
     elevenlabs_tts_model: str = field(default_factory=lambda: str(os.getenv("ELEVENLABS_TTS_MODEL", "eleven_turbo_v2_5") or "eleven_turbo_v2_5").strip())
@@ -136,6 +162,10 @@ class Settings:
             ordered = configured
         else:
             ordered_list: list[str] = []
+            if self.xiaomi_mimo_api_key and self.xiaomi_mimo_api_base_url:
+                ordered_list.append("xiaomi_mimo")
+            if self.kokoro_api_key or self.kokoro_tts_base_url:
+                ordered_list.append("kokoro")
             if self.elevenlabs_api_key:
                 ordered_list.append("elevenlabs")
             if self.requesty_api_token:
