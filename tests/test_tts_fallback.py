@@ -15,7 +15,7 @@ def test_settings_backend_order_prefers_configured_remote_backends(tmp_path: Pat
         openai_api_key="openai-key",
     )
 
-    assert settings.preferred_tts_backends() == ("requesty", "openai", "melo", "espeak")
+    assert settings.preferred_tts_backends() == ("kokoro", "requesty", "openai", "melo", "espeak")
 
 
 def test_settings_backend_order_respects_explicit_override(tmp_path: Path) -> None:
@@ -25,6 +25,57 @@ def test_settings_backend_order_respects_explicit_override(tmp_path: Path) -> No
     )
 
     assert settings.preferred_tts_backends() == ("melo", "requesty", "espeak")
+
+
+def test_kokoro_openai_compatible_backend_does_not_require_api_key(tmp_path: Path, monkeypatch) -> None:
+    settings = Settings(
+        data_dir=tmp_path / "runtime",
+        kokoro_api_key="",
+        kokoro_tts_base_url="http://kokoro.test/v1/audio/speech",
+        tts_backend_order=("kokoro",),
+        ffmpeg_bin="",
+    )
+    engine = LocalTtsEngine(settings)
+    voice = resolve_voice("alloy")
+    captured: dict[str, object] = {}
+
+    class FakeResponse:
+        content = b"kokoro-mp3"
+
+        def raise_for_status(self) -> None:
+            return None
+
+    class FakeClient:
+        def __init__(self, timeout: float):
+            captured["timeout"] = timeout
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return None
+
+        def post(self, url: str, *, headers: dict[str, str], json: dict[str, object]):
+            captured["url"] = url
+            captured["headers"] = headers
+            captured["json"] = json
+            return FakeResponse()
+
+    monkeypatch.setattr(tts_module.httpx, "Client", FakeClient)
+    monkeypatch.setattr(tts_module, "convert_audio_bytes", lambda audio_bytes, **_kwargs: audio_bytes)
+
+    audio_bytes, fmt = engine.synthesize(
+        "kokoro hello",
+        voice=voice,
+        response_format="mp3",
+        requested_voice_id="af_heart",
+    )
+
+    assert audio_bytes == b"kokoro-mp3"
+    assert fmt == "mp3"
+    assert engine.last_backend == "kokoro"
+    assert captured["url"] == "http://kokoro.test/v1/audio/speech"
+    assert captured["headers"] == {"Content-Type": "application/json"}
 
 
 def test_local_tts_engine_falls_back_after_remote_error(tmp_path: Path, monkeypatch) -> None:

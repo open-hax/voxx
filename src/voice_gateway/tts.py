@@ -338,7 +338,9 @@ class LocalTtsEngine:
         speed: float,
         response_format: str,
     ) -> tuple[bytes, str]:
-        if not api_key or not base_url:
+        if not base_url:
+            raise RuntimeError(f"{backend} is not configured")
+        if not api_key and backend != "kokoro":
             raise RuntimeError(f"{backend} is not configured")
 
         request_format = response_format if response_format in {"mp3", "wav", "flac", "opus", "pcm"} else "mp3"
@@ -355,12 +357,12 @@ class LocalTtsEngine:
         with httpx.Client(timeout=self.settings.tts_remote_timeout_seconds) as client:
             for voice_id in candidates:
                 try:
+                    headers = {"Content-Type": "application/json"}
+                    if api_key:
+                        headers["Authorization"] = f"Bearer {api_key}"
                     response = client.post(
                         base_url,
-                        headers={
-                            "Authorization": f"Bearer {api_key}",
-                            "Content-Type": "application/json",
-                        },
+                        headers=headers,
                         json={
                             "model": model,
                             "input": text,
@@ -477,6 +479,19 @@ class LocalTtsEngine:
                 source_format = "wav"
                 if backend == "melo":
                     source_bytes = self._synthesize_with_melo(text, voice, speed=speed, language=language)
+                elif backend == "kokoro":
+                    source_bytes, source_format = self._synthesize_with_openai_compatible(
+                        backend="kokoro",
+                        api_key=self.settings.kokoro_api_key,
+                        base_url=self.settings.kokoro_tts_base_url,
+                        model=self.settings.kokoro_tts_model,
+                        default_voice=self.settings.kokoro_tts_voice,
+                        text=text,
+                        voice=voice,
+                        requested_voice_id=requested_voice_id,
+                        speed=speed,
+                        response_format=normalized_format,
+                    )
                 elif backend == "espeak":
                     source_bytes = self._synthesize_with_espeak(text, speed=speed)
                 elif backend == "requesty":
