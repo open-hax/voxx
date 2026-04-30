@@ -451,62 +451,6 @@ class LocalTtsEngine:
         detail = "; ".join(errors) if errors else "request failed"
         raise RuntimeError(f"xiaomi_mimo failed ({detail})")
 
-    def _synthesize_with_elevenlabs(
-        self,
-        text: str,
-        voice: VoiceProfile,
-        *,
-        requested_voice_id: str | None,
-        speed: float,
-    ) -> tuple[bytes, str]:
-        if not self.settings.elevenlabs_api_key:
-            raise RuntimeError("elevenlabs is not configured")
-
-        candidates = self._remote_voice_candidates(
-            voice,
-            backend="elevenlabs",
-            requested_voice_id=requested_voice_id,
-            default_voice=self.settings.elevenlabs_voice_id,
-        )
-        if not candidates:
-            raise RuntimeError("elevenlabs has no usable voice candidate")
-
-        errors: list[str] = []
-        with httpx.Client(timeout=self.settings.tts_remote_timeout_seconds) as client:
-            for voice_id in candidates:
-                try:
-                    response = client.post(
-                        f"{self.settings.elevenlabs_tts_base_url}/text-to-speech/{voice_id}",
-                        params={"output_format": "mp3_44100_128"},
-                        headers={
-                            "xi-api-key": self.settings.elevenlabs_api_key,
-                            "Content-Type": "application/json",
-                        },
-                        json={
-                            "text": text,
-                            "model_id": self.settings.elevenlabs_tts_model,
-                            "voice_settings": {
-                                "stability": voice.stability,
-                                "similarity_boost": voice.similarity_boost,
-                                "style": voice.style,
-                                "use_speaker_boost": voice.use_speaker_boost,
-                                "speed": max(0.6, min(1.2, speed * voice.speed_multiplier)),
-                            },
-                        },
-                    )
-                    response.raise_for_status()
-                    return response.content, "mp3"
-                except httpx.HTTPStatusError as exc:
-                    errors.append(f"voice={voice_id} status={exc.response.status_code}")
-                    if exc.response.status_code in {400, 404, 422} and len(candidates) > 1:
-                        continue
-                    break
-                except httpx.HTTPError as exc:
-                    errors.append(f"voice={voice_id} error={exc.__class__.__name__}")
-                    break
-        detail = "; ".join(errors) if errors else "request failed"
-        raise RuntimeError(f"elevenlabs failed ({detail})")
-
     def _synthesize_with_espeak(self, text: str, *, speed: float) -> bytes | None:
         command_candidates = (
             ["espeak-ng"],
@@ -593,13 +537,6 @@ class LocalTtsEngine:
                         requested_voice_id=requested_voice_id,
                         speed=speed,
                         response_format=normalized_format,
-                    )
-                elif backend == "elevenlabs":
-                    source_bytes, source_format = self._synthesize_with_elevenlabs(
-                        text,
-                        voice,
-                        requested_voice_id=requested_voice_id,
-                        speed=speed,
                     )
                 else:
                     failures.append(f"{backend}: unsupported backend")

@@ -7,11 +7,10 @@ from fastapi import Request
 
 from .auth import is_authorized
 from .catalog import (
-    DEFAULT_ELEVENLABS_VOICE,
     list_models,
     list_voices,
     resolve_voice,
-    voice_to_elevenlabs_json,
+    voice_to_catalog_json,
     voice_to_openai_json,
 )
 from .config import Settings, get_settings
@@ -60,7 +59,7 @@ class VoiceGatewayService:
                 or needle in voice.name.lower()
                 or any(needle in alias.lower() for alias in voice.aliases)
             ]
-        payload = [voice_to_elevenlabs_json(voice) for voice in voices]
+        payload = [voice_to_catalog_json(voice) for voice in voices]
         return {
             "voices": payload,
             "has_more": False,
@@ -70,11 +69,11 @@ class VoiceGatewayService:
 
     def voice_payload(self, voice_id: str) -> dict[str, Any]:
         voice = resolve_voice(voice_id)
-        return voice_to_elevenlabs_json(voice)
+        return voice_to_catalog_json(voice)
 
     def voice_settings_payload(self, voice_id: str) -> dict[str, Any]:
         voice = resolve_voice(voice_id)
-        return voice.elevenlabs_settings()
+        return voice.voice_settings()
 
     def synthesize_openai(
         self,
@@ -104,23 +103,6 @@ class VoiceGatewayService:
         if voice_id:
             headers["x-openhax-requested-voice-id"] = voice_id
         return audio_bytes, normalized_format, headers
-
-    def synthesize_elevenlabs(
-        self,
-        *,
-        text: str,
-        voice_id: str | None,
-        response_format: str,
-        speed: float,
-        language: str | None,
-    ) -> tuple[bytes, str, dict[str, str]]:
-        return self.synthesize_openai(
-            text=text,
-            voice_id=voice_id or DEFAULT_ELEVENLABS_VOICE,
-            response_format=response_format,
-            speed=speed,
-            language=language,
-        )
 
     def transcribe(
         self,

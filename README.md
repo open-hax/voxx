@@ -6,7 +6,7 @@ Fork Tales voice pipeline extracted into the standalone Open Hax service package
 - Local TTS pipeline extracted from `orgs/octave-commons/fork_tales/part64/code/tts_service.py`
 - Local STT pipeline extracted from `orgs/octave-commons/fork_tales/part64/code/world_web/ai.py`
 - OpenAI-compatible voice endpoints
-- ElevenLabs-style compatibility endpoints
+- Voxx voice catalog and provider-style convenience endpoints
 - Requesty/OpenAI-client compatibility via `/v1/*` OpenAI audio routes
 
 ## Supported endpoint surface
@@ -16,7 +16,7 @@ Fork Tales voice pipeline extracted into the standalone Open Hax service package
 - `POST /v1/audio/transcriptions`
 - `POST /v1/audio/translations`
 
-### ElevenLabs-compatible
+### Voxx voice catalog and provider-style routes
 - `GET /v1/voices`
 - `GET /v1/voices/search`
 - `GET /v1/voices/:voice_id`
@@ -117,26 +117,26 @@ Voxx now chooses a backend order instead of hard-wiring itself to Melo/espeak on
 
 Default order when credentials exist:
 
-1. `xiaomi_mimo`
-2. `kokoro`
+1. `kokoro`
+2. `xiaomi_mimo`
 3. `requesty`
 4. `openai`
 5. `melo`
 6. `espeak`
 
-The workspace compose default is `xiaomi_mimo,kokoro,melo,espeak`; ElevenLabs is intentionally not in that runtime default.
+The workspace compose default is `kokoro,melo,espeak`. Agents should strongly prefer the local Voxx + Kokoro path and only opt into remote fallbacks when a task explicitly requires them.
 
 Override the order explicitly with:
 
 ```bash
-VOICE_GATEWAY_TTS_BACKEND_ORDER=xiaomi_mimo,kokoro,melo,espeak
+VOICE_GATEWAY_TTS_BACKEND_ORDER=kokoro,melo,espeak
 ```
 
 Useful env knobs:
 
 ```bash
 # provider order / timeouts
-VOICE_GATEWAY_TTS_BACKEND_ORDER=xiaomi_mimo,kokoro,melo,espeak
+VOICE_GATEWAY_TTS_BACKEND_ORDER=kokoro,melo,espeak
 VOICE_GATEWAY_TTS_REMOTE_TIMEOUT_SECONDS=45
 
 # Xiaomi MiMo chat/audio bridge
@@ -172,7 +172,7 @@ Voxx also exposes the backend actually used for a synthesis request through the 
 
 - `x-openhax-tts-backend`
 
-That lets callers keep pointing at Voxx while Voxx quietly upgrades from local fallback audio to Xiaomi MiMo, Kokoro, Requesty, or OpenAI when those backends are available.
+That lets callers keep pointing at Voxx while Voxx reports whether Kokoro, Xiaomi MiMo, Requesty, OpenAI, Melo, or eSpeak produced the audio.
 
 ## Sports commentator postprocess
 
@@ -208,7 +208,7 @@ Quick 2026-03-20 findings from a live crawl of `models.dev` plus provider docs:
 - **Cloudflare Workers AI / AI Gateway — MyShell MeloTTS**: models.dev lists `@cf/myshell-ai/melotts` / `workers-ai/@cf/myshell-ai/melotts` at `$0.00` listed token cost, making it the most interesting free-ish hosted fallback candidate to validate next.
 - **Requesty**: already compatible with Voxx because it exposes an OpenAI-style `/v1/audio/speech` route; best current near-drop-in option when the token is available.
 - **Google Gemini preview TTS** and **Qwen Omni audio models** show up in models.dev, but they are not free and/or are more audio-native than simple drop-in TTS today.
-- **ElevenLabs** remains the highest-value final target when a specific sponsored voice is available; Voxx now has a clean env path for that exact voice ID later.
+- **Kokoro** is the preferred local voice path for agents and compose deployments; remote backends remain optional fallbacks behind Voxx.
 
 ## Docker + registry reuse
 This service reuses the existing registry-backed ML image `localhost:5000/shibboleth/ml-base:cuda12.4-2026-03-18` as the seed ML base for Melo workloads, then publishes a dedicated Melo-capable base into the local registry.
@@ -250,5 +250,5 @@ If `VOICE_GATEWAY_API_KEY` is set, the service accepts these auth styles:
 
 ## Notes
 - Requesty compatibility is handled through the OpenAI-compatible `/v1` audio routes.
-- ElevenLabs realtime compatibility here is a buffered shim, not full upstream event parity.
+- Provider-style websocket routes are buffered convenience shims, not full upstream event parity.
 - OpenAI Realtime API parity is intentionally out of scope for this first extraction pass.

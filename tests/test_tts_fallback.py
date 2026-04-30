@@ -35,7 +35,7 @@ def test_settings_backend_order_prefers_xiaomi_mimo_when_configured(tmp_path: Pa
         requesty_api_token="requesty-token",
     )
 
-    assert settings.preferred_tts_backends() == ("xiaomi_mimo", "kokoro", "requesty", "melo", "espeak")
+    assert settings.preferred_tts_backends() == ("kokoro", "xiaomi_mimo", "requesty", "melo", "espeak")
 
 
 def test_kokoro_openai_compatible_backend_does_not_require_api_key(tmp_path: Path, monkeypatch) -> None:
@@ -195,19 +195,19 @@ def test_local_tts_engine_falls_back_after_remote_error(tmp_path: Path, monkeypa
     assert engine.last_backend == "melo"
 
 
-def test_remote_voice_candidates_preserve_requested_id_for_elevenlabs(tmp_path: Path) -> None:
-    settings = Settings(data_dir=tmp_path / "runtime", elevenlabs_voice_id="env-eleven-default")
+def test_remote_voice_candidates_preserve_requested_id_for_requesty(tmp_path: Path) -> None:
+    settings = Settings(data_dir=tmp_path / "runtime", requesty_tts_voice="env-requesty-default")
     engine = LocalTtsEngine(settings)
     voice = resolve_voice("nova")
 
     candidates = engine._remote_voice_candidates(
         voice,
-        backend="elevenlabs",
+        backend="requesty",
         requested_voice_id="voice_abc123",
-        default_voice=settings.elevenlabs_voice_id,
+        default_voice=settings.requesty_tts_voice,
     )
 
-    assert candidates == ["voice_abc123", "env-eleven-default"]
+    assert candidates == ["voice_abc123", "ash", "env-requesty-default", "nova"]
 
 
 def test_sports_commentator_postprocess_applies_to_remote_outputs(tmp_path: Path, monkeypatch) -> None:

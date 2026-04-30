@@ -43,9 +43,6 @@ def _env_csv(name: str, default: str = "") -> tuple[str, ...]:
 def _normalize_tts_backend_name(name: str) -> str:
     value = name.strip().lower()
     aliases = {
-        "11labs": "elevenlabs",
-        "eleven": "elevenlabs",
-        "elevenlabs": "elevenlabs",
         "requesty": "requesty",
         "openai": "openai",
         "melo": "melo",
@@ -120,10 +117,6 @@ class Settings:
     kokoro_tts_base_url: str = field(default_factory=lambda: str(os.getenv("KOKORO_TTS_BASE_URL", "http://kokoro:8000/v1/audio/speech") or "http://kokoro:8000/v1/audio/speech").strip().rstrip("/"))
     kokoro_tts_model: str = field(default_factory=lambda: str(os.getenv("KOKORO_TTS_MODEL", "kokoro") or "kokoro").strip())
     kokoro_tts_voice: str = field(default_factory=lambda: str(os.getenv("KOKORO_TTS_VOICE", "af_bella_725_H") or "af_bella_725_H").strip())
-    elevenlabs_api_key: str = field(default_factory=lambda: str(os.getenv("ELEVENLABS_API_KEY", "") or "").strip())
-    elevenlabs_tts_base_url: str = field(default_factory=lambda: str(os.getenv("ELEVENLABS_TTS_BASE_URL", "https://api.elevenlabs.io/v1") or "https://api.elevenlabs.io/v1").strip().rstrip("/"))
-    elevenlabs_tts_model: str = field(default_factory=lambda: str(os.getenv("ELEVENLABS_TTS_MODEL", "eleven_turbo_v2_5") or "eleven_turbo_v2_5").strip())
-    elevenlabs_voice_id: str = field(default_factory=lambda: str(os.getenv("ELEVENLABS_VOICE_ID", "") or "").strip())
     tts_postprocess_enabled: bool = field(default_factory=lambda: _env_bool("TTS_POSTPROCESS_ENABLED", True))
     tts_postprocess_profile: str = field(default_factory=lambda: _normalize_tts_postprocess_profile_name(str(os.getenv("TTS_POSTPROCESS_PROFILE", "sports-commentator-v1") or "sports-commentator-v1")))
     tts_narrator_unifier_enabled: bool = field(default_factory=lambda: _env_bool("TTS_NARRATOR_UNIFIER_ENABLED", True))
@@ -162,12 +155,10 @@ class Settings:
             ordered = configured
         else:
             ordered_list: list[str] = []
-            if self.xiaomi_mimo_api_key and self.xiaomi_mimo_api_base_url:
-                ordered_list.append("xiaomi_mimo")
             if self.kokoro_api_key or self.kokoro_tts_base_url:
                 ordered_list.append("kokoro")
-            if self.elevenlabs_api_key:
-                ordered_list.append("elevenlabs")
+            if self.xiaomi_mimo_api_key and self.xiaomi_mimo_api_base_url:
+                ordered_list.append("xiaomi_mimo")
             if self.requesty_api_token:
                 ordered_list.append("requesty")
             if self.openai_api_key:

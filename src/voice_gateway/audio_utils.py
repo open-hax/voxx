@@ -64,7 +64,7 @@ def normalize_audio_format(fmt: str | None) -> str:
     return "mp3"
 
 
-def normalize_elevenlabs_output_format(value: str | None) -> str:
+def normalize_voice_output_format(value: str | None) -> str:
     if not value:
         return "mp3"
     normalized = value.strip().lower()

@@ -8,9 +8,9 @@ from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
 
-from .audio_utils import mime_for_audio_format, normalize_audio_format, normalize_elevenlabs_output_format
-from .catalog import DEFAULT_ELEVENLABS_VOICE
-from .formatters import elevenlabs_transcription_payload, openai_transcription_payload
+from .audio_utils import mime_for_audio_format, normalize_audio_format, normalize_voice_output_format
+from .catalog import DEFAULT_OPENAI_VOICE
+from .formatters import voice_transcription_payload, openai_transcription_payload
 from .service import VoiceGatewayService
 
 
@@ -38,7 +38,7 @@ def _openai_error(status_code: int, message: str, *, param: str | None = None, c
     return response
 
 
-def _elevenlabs_error(status_code: int, message: str) -> JSONResponse:
+def _compat_error(status_code: int, message: str) -> JSONResponse:
     return JSONResponse(
         status_code=status_code,
         content={
@@ -116,7 +116,7 @@ def create_app(service: VoiceGatewayService | None = None) -> FastAPI:
     gateway = service or VoiceGatewayService.create_default()
     app = FastAPI(
         title="OpenHax Voxx",
-        description="Fork Tales voice pipeline extracted into an OpenAI-compatible and ElevenLabs-compatible service.",
+        description="Fork Tales voice pipeline extracted into an OpenAI-compatible Voxx service.",
         version="0.1.0",
     )
     app.add_middleware(
@@ -146,9 +146,9 @@ def create_app(service: VoiceGatewayService | None = None) -> FastAPI:
 
     @app.get("/v1/voices")
     @app.get("/v1/voices/search")
-    async def elevenlabs_voices(request: Request) -> Response:
+    async def voice_voices(request: Request) -> Response:
         if not gateway.authorized(request):
-            return _elevenlabs_error(401, "Invalid API key")
+            return _compat_error(401, "Invalid API key")
         voice_ids_query = list(request.query_params.getlist("voice_ids"))
         expanded_voice_ids: list[str] = []
         for value in voice_ids_query:
@@ -163,15 +163,15 @@ def create_app(service: VoiceGatewayService | None = None) -> FastAPI:
         return JSONResponse(gateway.openai_voice_payload())
 
     @app.get("/v1/voices/{voice_id}")
-    async def elevenlabs_voice(voice_id: str, request: Request) -> Response:
+    async def voice_voice(voice_id: str, request: Request) -> Response:
         if not gateway.authorized(request):
-            return _elevenlabs_error(401, "Invalid API key")
+            return _compat_error(401, "Invalid API key")
         return JSONResponse(gateway.voice_payload(voice_id))
 
     @app.get("/v1/voices/{voice_id}/settings")
-    async def elevenlabs_voice_settings(voice_id: str, request: Request) -> Response:
+    async def voice_voice_settings(voice_id: str, request: Request) -> Response:
         if not gateway.authorized(request):
-            return _elevenlabs_error(401, "Invalid API key")
+            return _compat_error(401, "Invalid API key")
         return JSONResponse(gateway.voice_settings_payload(voice_id))
 
     @app.post("/v1/audio/speech")
@@ -243,53 +243,53 @@ def create_app(service: VoiceGatewayService | None = None) -> FastAPI:
     async def openai_audio_translations(request: Request) -> Response:
         return await _handle_openai_transcription(request, task="translate")
 
-    async def _handle_elevenlabs_tts(request: Request, voice_id: str) -> Response:
+    async def _handle_provider_style_tts(request: Request, voice_id: str) -> Response:
         if not gateway.authorized(request):
-            return _elevenlabs_error(401, "Invalid API key")
+            return _compat_error(401, "Invalid API key")
         try:
             payload = await request.json()
         except Exception:
             payload = {}
         text = str(payload.get("text") or "").strip()
         if not text:
-            return _elevenlabs_error(400, "Missing required field: text")
+            return _compat_error(400, "Missing required field: text")
         voice_settings = payload.get("voice_settings") if isinstance(payload.get("voice_settings"), dict) else {}
         speed = _safe_float(voice_settings.get("speed") or payload.get("speed"), 1.0)
         language = str(payload.get("language_code") or payload.get("language") or "").strip() or None
-        output_format = normalize_elevenlabs_output_format(
+        output_format = normalize_voice_output_format(
             request.query_params.get("output_format") or payload.get("output_format")
         )
         try:
-            audio_bytes, normalized_format, headers = gateway.synthesize_elevenlabs(
+            audio_bytes, normalized_format, headers = gateway.synthesize_openai(
                 text=text,
-                voice_id=voice_id or DEFAULT_ELEVENLABS_VOICE,
+                voice_id=voice_id or DEFAULT_OPENAI_VOICE,
                 response_format=output_format,
                 speed=speed,
                 language=language,
             )
         except RuntimeError as exc:
-            return _elevenlabs_error(503, str(exc))
+            return _compat_error(503, str(exc))
         headers = {
             **headers,
-            "content-disposition": f'inline; filename="{voice_id or DEFAULT_ELEVENLABS_VOICE}.{normalized_format}"',
+            "content-disposition": f'inline; filename="{voice_id or DEFAULT_OPENAI_VOICE}.{normalized_format}"',
         }
         return Response(audio_bytes, media_type=mime_for_audio_format(normalized_format), headers=headers)
 
     @app.post("/v1/text-to-speech/{voice_id}")
-    async def elevenlabs_text_to_speech(voice_id: str, request: Request) -> Response:
-        return await _handle_elevenlabs_tts(request, voice_id)
+    async def voice_text_to_speech(voice_id: str, request: Request) -> Response:
+        return await _handle_provider_style_tts(request, voice_id)
 
     @app.post("/v1/text-to-speech/{voice_id}/stream")
-    async def elevenlabs_text_to_speech_stream(voice_id: str, request: Request) -> Response:
-        return await _handle_elevenlabs_tts(request, voice_id)
+    async def voice_text_to_speech_stream(voice_id: str, request: Request) -> Response:
+        return await _handle_provider_style_tts(request, voice_id)
 
     @app.post("/v1/speech-to-text")
-    async def elevenlabs_speech_to_text(request: Request) -> Response:
+    async def voice_speech_to_text(request: Request) -> Response:
         if not gateway.authorized(request):
-            return _elevenlabs_error(401, "Invalid API key")
+            return _compat_error(401, "Invalid API key")
         upload = await _extract_audio_upload(request)
         if upload.get("error"):
-            return _elevenlabs_error(400, str(upload["error"]))
+            return _compat_error(400, str(upload["error"]))
         form = upload["form"]
         model_id = str(getattr(form, "get", lambda *args: "scribe_v1")("model_id", "scribe_v1") or "scribe_v1")
         language = str(
@@ -304,7 +304,7 @@ def create_app(service: VoiceGatewayService | None = None) -> FastAPI:
         )
         if not result.ok:
             status_code = 503 if "backend active" in str(result.error or "").lower() else 400
-            return _elevenlabs_error(status_code, str(result.error or "transcription failed"))
+            return _compat_error(status_code, str(result.error or "transcription failed"))
         record = gateway.store_transcript(
             source_name=str(upload["file_name"]),
             mime_type=str(upload["mime"]),
@@ -312,7 +312,7 @@ def create_app(service: VoiceGatewayService | None = None) -> FastAPI:
             model_id=model_id,
             result=result,
         )
-        response = elevenlabs_transcription_payload(
+        response = voice_transcription_payload(
             result,
             transcription_id=str(record["transcription_id"]),
             model_id=model_id,
@@ -321,12 +321,12 @@ def create_app(service: VoiceGatewayService | None = None) -> FastAPI:
         return response
 
     @app.get("/v1/speech-to-text/transcripts/{transcription_id}")
-    async def elevenlabs_get_transcript(transcription_id: str, request: Request) -> Response:
+    async def voice_get_transcript(transcription_id: str, request: Request) -> Response:
         if not gateway.authorized(request):
-            return _elevenlabs_error(401, "Invalid API key")
+            return _compat_error(401, "Invalid API key")
         record = gateway.get_transcript(transcription_id)
         if record is None:
-            return _elevenlabs_error(404, "Transcript not found")
+            return _compat_error(404, "Transcript not found")
         result = record.get("result", {})
         return JSONResponse(
             {
@@ -342,7 +342,7 @@ def create_app(service: VoiceGatewayService | None = None) -> FastAPI:
         )
 
     @app.websocket("/v1/speech-to-text/realtime")
-    async def elevenlabs_realtime_stt(websocket: WebSocket) -> None:
+    async def voice_realtime_stt(websocket: WebSocket) -> None:
         if gateway.settings.api_key and not gateway.authorized(websocket):
             await websocket.close(code=4401)
             return
@@ -395,7 +395,7 @@ def create_app(service: VoiceGatewayService | None = None) -> FastAPI:
             return
 
     @app.websocket("/v1/text-to-speech/{voice_id}/stream-input")
-    async def elevenlabs_realtime_tts(websocket: WebSocket, voice_id: str) -> None:
+    async def voice_realtime_tts(websocket: WebSocket, voice_id: str) -> None:
         if gateway.settings.api_key and not gateway.authorized(websocket):
             await websocket.close(code=4401)
             return
@@ -403,7 +403,7 @@ def create_app(service: VoiceGatewayService | None = None) -> FastAPI:
         chunks: list[str] = []
         speed = 1.0
         language: str | None = None
-        output_format = normalize_elevenlabs_output_format(websocket.query_params.get("output_format"))
+        output_format = normalize_voice_output_format(websocket.query_params.get("output_format"))
         try:
             while True:
                 payload = await _read_json_message(websocket)
@@ -424,7 +424,7 @@ def create_app(service: VoiceGatewayService | None = None) -> FastAPI:
                         await websocket.send_json({"type": "error", "message": "empty text buffer"})
                         continue
                     try:
-                        audio_bytes, normalized_format, _headers = gateway.synthesize_elevenlabs(
+                        audio_bytes, normalized_format, _headers = gateway.synthesize_openai(
                             text=text,
                             voice_id=voice_id,
                             response_format=output_format,

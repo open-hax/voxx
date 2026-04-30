@@ -82,7 +82,7 @@ def openai_transcription_payload(
     return JSONResponse({"text": result.text})
 
 
-def elevenlabs_transcription_payload(
+def voice_transcription_payload(
     result: TranscriptResult,
     *,
     transcription_id: str,

@@ -96,7 +96,7 @@ def test_openai_transcription_and_translation_routes(tmp_path: Path) -> None:
     assert stt_engine.calls[1]["task"] == "translate"
 
 
-def test_elevenlabs_voice_routes_and_tts_route(tmp_path: Path) -> None:
+def test_voice_catalog_routes_and_provider_style_tts_route(tmp_path: Path) -> None:
     client, tts_engine, _stt_engine = build_client(tmp_path)
 
     voices = client.get("/v1/voices", headers={"xi-api-key": "secret-token"})
@@ -110,14 +110,14 @@ def test_elevenlabs_voice_routes_and_tts_route(tmp_path: Path) -> None:
     tts_response = client.post(
         "/v1/text-to-speech/rachel?output_format=wav",
         headers={"xi-api-key": "secret-token"},
-        json={"text": "eleven compatible voice", "voice_settings": {"speed": 0.95}},
+        json={"text": "provider style voice", "voice_settings": {"speed": 0.95}},
     )
     assert tts_response.status_code == 200
     assert tts_response.headers["content-type"].startswith("audio/wav")
     assert tts_engine.calls[-1]["voice"] == "alloy"
 
 
-def test_elevenlabs_stt_route_persists_transcript(tmp_path: Path) -> None:
+def test_provider_style_stt_route_persists_transcript(tmp_path: Path) -> None:
     client, _tts_engine, _stt_engine = build_client(tmp_path)
 
     transcription = client.post(

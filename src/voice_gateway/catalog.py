@@ -27,7 +27,7 @@ class VoiceProfile:
             return True
         return target in {alias.lower() for alias in self.aliases}
 
-    def elevenlabs_settings(self) -> dict[str, Any]:
+    def voice_settings(self) -> dict[str, Any]:
         return {
             "stability": self.stability,
             "similarity_boost": self.similarity_boost,
@@ -47,7 +47,7 @@ VOICE_PROFILES: tuple[VoiceProfile, ...] = (
         melo_language="EN",
         description="Neutral OpenAI-compatible default voice",
         aliases=("rachel", "bella"),
-        labels={"accent": "neutral", "provider": "openai+elevenlabs-compatible"},
+        labels={"accent": "neutral", "provider": "voxx-openai-compatible"},
         provider_voice_ids={"openai": "alloy", "requesty": "alloy", "xiaomi_mimo": "mimo_default"},
     ),
     VoiceProfile(
@@ -59,7 +59,7 @@ VOICE_PROFILES: tuple[VoiceProfile, ...] = (
         stability=0.62,
         style=0.18,
         aliases=("aria", "serena", "ash"),
-        labels={"accent": "bright", "provider": "openai+elevenlabs-compatible"},
+        labels={"accent": "bright", "provider": "voxx-openai-compatible"},
         provider_voice_ids={"openai": "ash", "requesty": "ash", "xiaomi_mimo": "Mia"},
     ),
     VoiceProfile(
@@ -71,7 +71,7 @@ VOICE_PROFILES: tuple[VoiceProfile, ...] = (
         stability=0.68,
         style=0.08,
         aliases=("adam", "antoni"),
-        labels={"accent": "low", "provider": "openai+elevenlabs-compatible"},
+        labels={"accent": "low", "provider": "voxx-openai-compatible"},
         provider_voice_ids={"openai": "echo", "requesty": "echo", "xiaomi_mimo": "Dean"},
     ),
     VoiceProfile(
@@ -83,7 +83,7 @@ VOICE_PROFILES: tuple[VoiceProfile, ...] = (
         stability=0.58,
         style=0.24,
         aliases=("elli", "dorothy"),
-        labels={"accent": "airy", "provider": "openai+elevenlabs-compatible"},
+        labels={"accent": "airy", "provider": "voxx-openai-compatible"},
         provider_voice_ids={"openai": "shimmer", "requesty": "shimmer", "xiaomi_mimo": "Chloe"},
     ),
     VoiceProfile(
@@ -95,7 +95,7 @@ VOICE_PROFILES: tuple[VoiceProfile, ...] = (
         stability=0.7,
         style=0.06,
         aliases=("sam", "josh"),
-        labels={"accent": "steady", "provider": "openai+elevenlabs-compatible"},
+        labels={"accent": "steady", "provider": "voxx-openai-compatible"},
         provider_voice_ids={"openai": "echo", "requesty": "echo", "xiaomi_mimo": "Milo"},
     ),
     VoiceProfile(
@@ -264,14 +264,6 @@ MODEL_CATALOG: tuple[dict[str, Any], ...] = (
         "family": "stt",
     },
     {
-        "id": "eleven_multilingual_v2",
-        "object": "model",
-        "created": 0,
-        "owned_by": "openhax",
-        "modalities": ["text", "audio"],
-        "family": "tts",
-    },
-    {
         "id": "scribe_v1",
         "object": "model",
         "created": 0,
@@ -283,7 +275,6 @@ MODEL_CATALOG: tuple[dict[str, Any], ...] = (
 
 
 DEFAULT_OPENAI_VOICE = "alloy"
-DEFAULT_ELEVENLABS_VOICE = "alloy"
 
 
 def list_models() -> list[dict[str, Any]]:
@@ -311,7 +302,7 @@ def resolve_voice(voice_id: str | None, language_hint: str | None = None) -> Voi
     return VOICE_PROFILES[0]
 
 
-def voice_to_elevenlabs_json(profile: VoiceProfile) -> dict[str, Any]:
+def voice_to_catalog_json(profile: VoiceProfile) -> dict[str, Any]:
     return {
         "voice_id": profile.id,
         "name": profile.name,
@@ -320,7 +311,7 @@ def voice_to_elevenlabs_json(profile: VoiceProfile) -> dict[str, Any]:
         "labels": dict(profile.labels),
         "preview_url": None,
         "available_for_tiers": ["free", "starter", "creator", "pro"],
-        "settings": profile.elevenlabs_settings(),
+        "settings": profile.voice_settings(),
     }
 
 
