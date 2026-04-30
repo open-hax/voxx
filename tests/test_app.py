@@ -31,6 +31,7 @@ def test_models_require_auth_and_return_catalog(tmp_path: Path) -> None:
     health = client.get("/healthz")
     assert health.status_code == 200
     assert health.json()["service"] == "voxx"
+    assert health.json()["tts_queue"]["max_concurrent"] == 1
 
     unauthorized = client.get("/v1/models")
     assert unauthorized.status_code == 401
@@ -63,6 +64,8 @@ def test_openai_speech_endpoint_returns_audio_bytes(tmp_path: Path) -> None:
     assert response.headers["content-type"].startswith("audio/mpeg")
     assert response.headers["x-openhax-voice-id"] == "nova"
     assert response.headers["x-openhax-tts-backend"] == "stub"
+    assert response.headers["x-openhax-tts-queue-max-concurrent"] == "1"
+    assert int(response.headers["x-openhax-tts-queue-wait-ms"]) >= 0
     assert response.headers["x-openhax-requested-voice-id"] == "nova"
     assert tts_engine.calls[0]["text"] == "hello from openhax"
     assert tts_engine.calls[0]["requested_voice_id"] == "nova"

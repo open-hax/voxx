@@ -3,6 +3,8 @@ from __future__ import annotations
 import base64
 from pathlib import Path
 
+import httpx
+
 from voice_gateway.catalog import resolve_voice
 from voice_gateway.config import Settings
 from voice_gateway import tts as tts_module
@@ -283,6 +285,48 @@ def test_local_tts_engine_falls_back_after_remote_error(tmp_path: Path, monkeypa
 
     audio_bytes, fmt = engine.synthesize(
         "fallback me",
+        voice=voice,
+        response_format="mp3",
+        requested_voice_id="custom-voice",
+    )
+
+    assert audio_bytes == b"wav-local"
+    assert fmt == "mp3"
+    assert engine.last_backend == "melo"
+
+
+def test_local_tts_engine_falls_back_after_remote_quota_status(tmp_path: Path, monkeypatch) -> None:
+    settings = Settings(
+        data_dir=tmp_path / "runtime",
+        requesty_api_token="requesty-token",
+        tts_backend_order=("requesty", "melo", "espeak"),
+        ffmpeg_bin="",
+    )
+    engine = LocalTtsEngine(settings)
+    voice = resolve_voice("nova")
+    request = httpx.Request("POST", "https://requesty.test/v1/audio/speech")
+    response = httpx.Response(429, request=request, text="quota limited")
+
+    class FakeClient:
+        def __init__(self, timeout: float):
+            self.timeout = timeout
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return None
+
+        def post(self, *_args, **_kwargs):
+            return response
+
+    monkeypatch.setattr(tts_module.httpx, "Client", FakeClient)
+    monkeypatch.setattr(engine, "_synthesize_with_melo", lambda *_args, **_kwargs: b"wav-local")
+    monkeypatch.setattr(engine, "_synthesize_with_espeak", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(tts_module, "convert_audio_bytes", lambda audio_bytes, **_kwargs: audio_bytes)
+
+    audio_bytes, fmt = engine.synthesize(
+        "fallback after quota",
         voice=voice,
         response_format="mp3",
         requested_voice_id="custom-voice",

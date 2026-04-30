@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import threading
+import time
+from contextlib import contextmanager
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Iterator
 
 from fastapi import Request
 
@@ -19,12 +22,69 @@ from .transcripts import TranscriptStore
 from .tts import LocalTtsEngine
 
 
+class TtsQueueFullError(RuntimeError):
+    pass
+
+
+class TtsProcessingQueue:
+    def __init__(self, *, max_concurrent: int, max_pending: int, timeout_seconds: float) -> None:
+        self.max_concurrent = max(1, max_concurrent)
+        self.max_pending = max(0, max_pending)
+        self.timeout_seconds = max(0.1, timeout_seconds)
+        self._semaphore = threading.BoundedSemaphore(self.max_concurrent)
+        self._lock = threading.Lock()
+        self._active = 0
+        self._waiting = 0
+
+    @contextmanager
+    def slot(self) -> Iterator[float]:
+        with self._lock:
+            if self._active >= self.max_concurrent and self._waiting >= self.max_pending:
+                raise TtsQueueFullError(
+                    f"TTS queue is full: active={self._active}, waiting={self._waiting}, "
+                    f"max_concurrent={self.max_concurrent}, max_pending={self.max_pending}"
+                )
+            self._waiting += 1
+
+        started = time.monotonic()
+        acquired = False
+        try:
+            acquired = self._semaphore.acquire(timeout=self.timeout_seconds)
+            wait_seconds = time.monotonic() - started
+            with self._lock:
+                self._waiting -= 1
+                if acquired:
+                    self._active += 1
+            if not acquired:
+                raise TtsQueueFullError(
+                    f"Timed out waiting for TTS queue after {self.timeout_seconds:.1f}s; "
+                    f"max_concurrent={self.max_concurrent}, max_pending={self.max_pending}"
+                )
+            yield wait_seconds
+        finally:
+            if acquired:
+                with self._lock:
+                    self._active -= 1
+                self._semaphore.release()
+
+    def payload(self) -> dict[str, int | float]:
+        with self._lock:
+            return {
+                "active": self._active,
+                "waiting": self._waiting,
+                "max_concurrent": self.max_concurrent,
+                "max_pending": self.max_pending,
+                "timeout_seconds": self.timeout_seconds,
+            }
+
+
 @dataclass
 class VoiceGatewayService:
     settings: Settings
     tts_engine: Any
     stt_engine: Any
     transcript_store: TranscriptStore
+    tts_queue: TtsProcessingQueue | None = None
 
     @classmethod
     def create_default(cls) -> "VoiceGatewayService":
@@ -34,7 +94,20 @@ class VoiceGatewayService:
             tts_engine=LocalTtsEngine(settings),
             stt_engine=LocalSttEngine(settings),
             transcript_store=TranscriptStore(settings.transcript_dir),
+            tts_queue=TtsProcessingQueue(
+                max_concurrent=settings.tts_queue_max_concurrent,
+                max_pending=settings.tts_queue_max_pending,
+                timeout_seconds=settings.tts_queue_timeout_seconds,
+            ),
         )
+
+    def __post_init__(self) -> None:
+        if self.tts_queue is None:
+            self.tts_queue = TtsProcessingQueue(
+                max_concurrent=self.settings.tts_queue_max_concurrent,
+                max_pending=self.settings.tts_queue_max_pending,
+                timeout_seconds=self.settings.tts_queue_timeout_seconds,
+            )
 
     def authorized(self, request: Request) -> bool:
         return is_authorized(request, self.settings)
@@ -78,6 +151,10 @@ class VoiceGatewayService:
     def tts_postprocess_profiles_payload(self) -> dict[str, object]:
         return self.settings.tts_postprocess_profiles_payload()
 
+    def tts_queue_payload(self) -> dict[str, int | float]:
+        assert self.tts_queue is not None
+        return self.tts_queue.payload()
+
     def synthesize_openai(
         self,
         *,
@@ -92,21 +169,25 @@ class VoiceGatewayService:
         prompt_aware_style: str | None = None,
     ) -> tuple[bytes, str, dict[str, str]]:
         voice = resolve_voice(voice_id, language)
-        audio_bytes, normalized_format = self.tts_engine.synthesize(
-            text,
-            voice=voice,
-            response_format=response_format,
-            speed=speed,
-            language=language,
-            requested_voice_id=voice_id,
-            postprocess_profile=postprocess_profile,
-            postprocess_enabled=postprocess_enabled,
-            prompt_aware=prompt_aware,
-            prompt_aware_style=prompt_aware_style,
-        )
+        assert self.tts_queue is not None
+        with self.tts_queue.slot() as queue_wait_seconds:
+            audio_bytes, normalized_format = self.tts_engine.synthesize(
+                text,
+                voice=voice,
+                response_format=response_format,
+                speed=speed,
+                language=language,
+                requested_voice_id=voice_id,
+                postprocess_profile=postprocess_profile,
+                postprocess_enabled=postprocess_enabled,
+                prompt_aware=prompt_aware,
+                prompt_aware_style=prompt_aware_style,
+            )
         headers = {
             "x-openhax-voice-id": voice.id,
             "x-openhax-audio-format": normalized_format,
+            "x-openhax-tts-queue-wait-ms": str(int(round(queue_wait_seconds * 1000))),
+            "x-openhax-tts-queue-max-concurrent": str(self.tts_queue.max_concurrent),
         }
         backend = str(getattr(self.tts_engine, "last_backend", "") or "").strip()
         if backend:

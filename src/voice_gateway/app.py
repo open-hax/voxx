@@ -7,6 +7,7 @@ from typing import Any
 from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
+from starlette.concurrency import run_in_threadpool
 
 from .audio_utils import mime_for_audio_format, normalize_audio_format, normalize_voice_output_format
 from .catalog import DEFAULT_OPENAI_VOICE
@@ -192,6 +193,7 @@ def create_app(service: VoiceGatewayService | None = None) -> FastAPI:
             "service": "voxx",
             "requires_api_key": bool(gateway.settings.api_key),
             "model_count": len(gateway.openai_models_payload()["data"]),
+            "tts_queue": gateway.tts_queue_payload(),
         }
 
     @app.get("/v1/models")
@@ -255,7 +257,8 @@ def create_app(service: VoiceGatewayService | None = None) -> FastAPI:
         language = str(payload.get("language") or "").strip() or None
         tts_options = _tts_request_options(request, payload)
         try:
-            audio_bytes, normalized_format, headers = gateway.synthesize_openai(
+            audio_bytes, normalized_format, headers = await run_in_threadpool(
+                gateway.synthesize_openai,
                 text=text,
                 voice_id=voice_id,
                 response_format=response_format,
@@ -327,7 +330,8 @@ def create_app(service: VoiceGatewayService | None = None) -> FastAPI:
         )
         tts_options = _tts_request_options(request, payload)
         try:
-            audio_bytes, normalized_format, headers = gateway.synthesize_openai(
+            audio_bytes, normalized_format, headers = await run_in_threadpool(
+                gateway.synthesize_openai,
                 text=text,
                 voice_id=voice_id or DEFAULT_OPENAI_VOICE,
                 response_format=output_format,
@@ -502,7 +506,8 @@ def create_app(service: VoiceGatewayService | None = None) -> FastAPI:
                         await websocket.send_json({"type": "error", "message": "empty text buffer"})
                         continue
                     try:
-                        audio_bytes, normalized_format, _headers = gateway.synthesize_openai(
+                        audio_bytes, normalized_format, _headers = await run_in_threadpool(
+                            gateway.synthesize_openai,
                             text=text,
                             voice_id=voice_id,
                             response_format=output_format,

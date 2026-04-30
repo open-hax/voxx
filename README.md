@@ -127,18 +127,23 @@ Default order when credentials exist:
 
 The workspace compose default is `kokoro,melo,espeak`. Agents should strongly prefer the local Voxx + Kokoro path and only opt into remote fallbacks when a task explicitly requires them.
 
-Override the order explicitly with:
+Override the order explicitly with local fallbacks at the end. If you opt into a remote/free provider such as Xiaomi MiMo, keep Kokoro/Melo/eSpeak after it so quota, auth, 429, 402/403, or 5xx errors degrade locally instead of requiring prompt edits:
 
 ```bash
+VOICE_GATEWAY_TTS_BACKEND_ORDER=xiaomi_mimo,kokoro,melo,espeak
+# local-only stable default:
 VOICE_GATEWAY_TTS_BACKEND_ORDER=kokoro,melo,espeak
 ```
 
 Useful env knobs:
 
 ```bash
-# provider order / timeouts
-VOICE_GATEWAY_TTS_BACKEND_ORDER=kokoro,melo,espeak
+# provider order / timeouts / queue safety
+VOICE_GATEWAY_TTS_BACKEND_ORDER=xiaomi_mimo,kokoro,melo,espeak
 VOICE_GATEWAY_TTS_REMOTE_TIMEOUT_SECONDS=45
+TTS_QUEUE_MAX_CONCURRENT=1
+TTS_QUEUE_MAX_PENDING=32
+TTS_QUEUE_TIMEOUT_SECONDS=120
 
 # Xiaomi MiMo chat/audio bridge
 XIAOMI_MIMO_API_BASE_URL=https://api.xiaomimimo.com/v1
@@ -238,6 +243,8 @@ Responses include:
 
 - `x-openhax-tts-postprocess-profile`: active final profile or `none`
 - `x-openhax-tts-prompt-aware`: `1` when prompt-aware instructions were active, otherwise `0`
+- `x-openhax-tts-queue-wait-ms`: how long this request waited for the bounded TTS processing queue
+- `x-openhax-tts-queue-max-concurrent`: active queue concurrency cap
 
 Disable it completely with:
 
@@ -246,6 +253,26 @@ TTS_POSTPROCESS_ENABLED=0
 ```
 
 This means `xiaomi_mimo`, `kokoro`, `requesty`, `openai`, `melo`, and even `espeak` fallback outputs can all be pushed toward the same high-energy sports-commentary texture through Voxx.
+
+## Processing queue and runtime guardrails
+
+TTS generation is protected by a bounded in-process queue so agent bursts do not fan out into unbounded provider/GPU/CPU work. Defaults are intentionally conservative for a workstation:
+
+```bash
+TTS_QUEUE_MAX_CONCURRENT=1
+TTS_QUEUE_MAX_PENDING=32
+TTS_QUEUE_TIMEOUT_SECONDS=120
+```
+
+The compose runtime pins Voxx and Kokoro containers to host CPUs `2-21` by default and requests all NVIDIA GPUs via Docker's GPU device request. Override CPU affinity only when the host has a different topology:
+
+```bash
+VOXX_CPUSET=2-21
+NVIDIA_VISIBLE_DEVICES=all
+NVIDIA_DRIVER_CAPABILITIES=compute,utility
+```
+
+`GET /healthz` includes queue state under `tts_queue`.
 
 ## Provider research snapshot
 
