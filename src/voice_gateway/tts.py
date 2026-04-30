@@ -93,8 +93,8 @@ class LocalTtsEngine:
             )
         return ",".join(filters)
 
-    def _build_output_postprocess_filter_chain(self) -> str:
-        profile = self.settings.active_tts_postprocess_profile()
+    def _build_output_postprocess_filter_chain(self, *, requested_profile: str | None = None, enabled: bool | None = None) -> str:
+        profile = self.settings.active_tts_postprocess_profile(requested_profile=requested_profile, enabled=enabled)
         if not profile:
             return ""
         if profile == "sports-commentator-v1":
@@ -113,7 +113,64 @@ class LocalTtsEngine:
                     "volume=1.8dB",
                 ]
             )
+        if profile == "broadcast-warm-v1":
+            return ",".join(
+                [
+                    "highpass=f=75",
+                    "lowpass=f=14000",
+                    "equalizer=f=180:t=q:w=0.9:g=1.2",
+                    "equalizer=f=950:t=q:w=1.2:g=0.8",
+                    "equalizer=f=3200:t=q:w=1.0:g=2.4",
+                    "acompressor=threshold=0.20:ratio=2.6:attack=8:release=120:makeup=1.5:knee=3.0:link=average:detection=rms",
+                    "alimiter=limit=0.94",
+                    "volume=1.0dB",
+                ]
+            )
+        if profile == "narrator-polish-v1":
+            return ",".join(
+                [
+                    "highpass=f=65",
+                    "lowpass=f=15000",
+                    "equalizer=f=220:t=q:w=0.9:g=-0.7",
+                    "equalizer=f=2800:t=q:w=1.1:g=1.8",
+                    "equalizer=f=6500:t=q:w=1.2:g=0.9",
+                    "acompressor=threshold=0.24:ratio=2.0:attack=12:release=160:makeup=1.0:knee=4.0:link=average:detection=rms",
+                    "alimiter=limit=0.95",
+                ]
+            )
+        if profile == "crisp-radio-v1":
+            return ",".join(
+                [
+                    "highpass=f=120",
+                    "lowpass=f=11000",
+                    "equalizer=f=300:t=q:w=0.8:g=-1.2",
+                    "equalizer=f=2500:t=q:w=1.0:g=3.2",
+                    "equalizer=f=5200:t=q:w=1.0:g=3.0",
+                    "acompressor=threshold=0.16:ratio=4.0:attack=4:release=70:makeup=2.2:knee=2.0:link=average:detection=rms",
+                    "alimiter=limit=0.92",
+                    "volume=1.5dB",
+                ]
+            )
+        if profile == "soft-studio-v1":
+            return ",".join(
+                [
+                    "highpass=f=60",
+                    "lowpass=f=16000",
+                    "equalizer=f=240:t=q:w=1.0:g=0.8",
+                    "equalizer=f=3600:t=q:w=1.2:g=1.2",
+                    "acompressor=threshold=0.28:ratio=1.8:attack=18:release=180:makeup=0.8:knee=5.0:link=average:detection=rms",
+                    "alimiter=limit=0.96",
+                    "volume=0.5dB",
+                ]
+            )
         return ""
+
+    def _prompt_aware_style(self, *, enabled: bool | None = None, style: str | None = None) -> str:
+        active = self.settings.tts_prompt_aware_default if enabled is None else enabled
+        if not active:
+            return ""
+        requested_style = str(style or "").strip()
+        return requested_style or self.settings.tts_prompt_aware_style
 
     def _render_with_ffmpeg(self, input_path: Path, output_path: Path, filters: str) -> bool:
         if not self.settings.ffmpeg_bin:
@@ -338,6 +395,7 @@ class LocalTtsEngine:
         requested_voice_id: str | None,
         speed: float,
         response_format: str,
+        prompt_aware_style: str = "",
     ) -> tuple[bytes, str]:
         if not base_url:
             raise RuntimeError(f"{backend} is not configured")
@@ -361,16 +419,19 @@ class LocalTtsEngine:
                     headers = {"Content-Type": "application/json"}
                     if api_key:
                         headers["Authorization"] = f"Bearer {api_key}"
+                    request_payload: dict[str, object] = {
+                        "model": model,
+                        "input": text,
+                        "voice": voice_id,
+                        "response_format": request_format,
+                        "speed": float(speed),
+                    }
+                    if prompt_aware_style and backend in {"requesty", "openai"}:
+                        request_payload["instructions"] = prompt_aware_style
                     response = client.post(
                         base_url,
                         headers=headers,
-                        json={
-                            "model": model,
-                            "input": text,
-                            "voice": voice_id,
-                            "response_format": request_format,
-                            "speed": float(speed),
-                        },
+                        json=request_payload,
                     )
                     response.raise_for_status()
                     return response.content, request_format
@@ -392,6 +453,7 @@ class LocalTtsEngine:
         voice: VoiceProfile,
         requested_voice_id: str | None,
         response_format: str,
+        prompt_aware_style: str = "",
     ) -> tuple[bytes, str]:
         if not self.settings.xiaomi_mimo_api_key or not self.settings.xiaomi_mimo_api_base_url:
             raise RuntimeError("xiaomi_mimo is not configured")
@@ -408,7 +470,10 @@ class LocalTtsEngine:
 
         base_url = self.settings.xiaomi_mimo_api_base_url.rstrip("/")
         chat_url = f"{base_url}/chat/completions"
-        style = self.settings.xiaomi_mimo_tts_style or "Speak naturally and clearly."
+        style_parts = [self.settings.xiaomi_mimo_tts_style or "Speak naturally and clearly."]
+        if prompt_aware_style:
+            style_parts.append(prompt_aware_style)
+        style = "\n\n".join(part for part in style_parts if part.strip())
         errors: list[str] = []
         with httpx.Client(timeout=self.settings.tts_remote_timeout_seconds) as client:
             for voice_id in candidates:
@@ -478,11 +543,24 @@ class LocalTtsEngine:
         speed: float = 1.0,
         language: str | None = None,
         requested_voice_id: str | None = None,
+        postprocess_profile: str | None = None,
+        postprocess_enabled: bool | None = None,
+        prompt_aware: bool | None = None,
+        prompt_aware_style: str | None = None,
     ) -> tuple[bytes, str]:
         normalized_format = normalize_audio_format(response_format or self.settings.default_audio_format)
         failures: list[str] = []
         self.last_backend = ""
-        output_postprocess_filters = self._build_output_postprocess_filter_chain()
+        self.last_postprocess_profile = self.settings.active_tts_postprocess_profile(
+            requested_profile=postprocess_profile,
+            enabled=postprocess_enabled,
+        )
+        self.last_prompt_aware = bool(self._prompt_aware_style(enabled=prompt_aware, style=prompt_aware_style))
+        output_postprocess_filters = self._build_output_postprocess_filter_chain(
+            requested_profile=postprocess_profile,
+            enabled=postprocess_enabled,
+        )
+        active_prompt_aware_style = self._prompt_aware_style(enabled=prompt_aware, style=prompt_aware_style)
 
         for backend in self.settings.preferred_tts_backends():
             try:
@@ -502,6 +580,7 @@ class LocalTtsEngine:
                         requested_voice_id=requested_voice_id,
                         speed=speed,
                         response_format=normalized_format,
+                        prompt_aware_style=active_prompt_aware_style,
                     )
                 elif backend == "xiaomi_mimo":
                     source_bytes, source_format = self._synthesize_with_xiaomi_mimo(
@@ -509,6 +588,7 @@ class LocalTtsEngine:
                         voice=voice,
                         requested_voice_id=requested_voice_id,
                         response_format=normalized_format,
+                        prompt_aware_style=active_prompt_aware_style,
                     )
                 elif backend == "espeak":
                     source_bytes = self._synthesize_with_espeak(text, speed=speed)
@@ -524,6 +604,7 @@ class LocalTtsEngine:
                         requested_voice_id=requested_voice_id,
                         speed=speed,
                         response_format=normalized_format,
+                        prompt_aware_style=active_prompt_aware_style,
                     )
                 elif backend == "openai":
                     source_bytes, source_format = self._synthesize_with_openai_compatible(
@@ -537,6 +618,7 @@ class LocalTtsEngine:
                         requested_voice_id=requested_voice_id,
                         speed=speed,
                         response_format=normalized_format,
+                        prompt_aware_style=active_prompt_aware_style,
                     )
                 else:
                     failures.append(f"{backend}: unsupported backend")
@@ -571,6 +653,8 @@ class StubTtsEngine:
         self.audio_format = audio_format
         self.calls: list[dict[str, Any]] = []
         self.last_backend = "stub"
+        self.last_postprocess_profile = ""
+        self.last_prompt_aware = False
 
     def synthesize(
         self,
@@ -581,7 +665,13 @@ class StubTtsEngine:
         speed: float = 1.0,
         language: str | None = None,
         requested_voice_id: str | None = None,
+        postprocess_profile: str | None = None,
+        postprocess_enabled: bool | None = None,
+        prompt_aware: bool | None = None,
+        prompt_aware_style: str | None = None,
     ) -> tuple[bytes, str]:
+        self.last_postprocess_profile = str(postprocess_profile or "")
+        self.last_prompt_aware = bool(prompt_aware)
         self.calls.append(
             {
                 "text": text,
@@ -590,6 +680,10 @@ class StubTtsEngine:
                 "response_format": response_format,
                 "speed": speed,
                 "language": language,
+                "postprocess_profile": postprocess_profile,
+                "postprocess_enabled": postprocess_enabled,
+                "prompt_aware": prompt_aware,
+                "prompt_aware_style": prompt_aware_style,
             }
         )
         return self.audio_bytes, normalize_audio_format(response_format or self.audio_format)

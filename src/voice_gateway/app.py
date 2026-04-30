@@ -21,6 +21,63 @@ def _safe_float(value: Any, default: float) -> float:
         return default
 
 
+def _safe_bool(value: Any, default: bool | None = None) -> bool | None:
+    if value is None:
+        return default
+    normalized = str(value).strip().lower()
+    if not normalized:
+        return default
+    if normalized in {"1", "true", "yes", "on", "enabled", "enable"}:
+        return True
+    if normalized in {"0", "false", "no", "off", "disabled", "disable", "none"}:
+        return False
+    return default
+
+
+def _first_payload_value(payload: dict[str, Any], names: tuple[str, ...]) -> Any:
+    for name in names:
+        if name in payload:
+            return payload.get(name)
+    return None
+
+
+def _tts_request_options(request: Request, payload: dict[str, Any]) -> dict[str, Any]:
+    query = request.query_params
+    raw_postprocess = query.get("postprocess") or _first_payload_value(payload, ("postprocess",))
+    postprocess_enabled = _safe_bool(raw_postprocess, None)
+    explicit_postprocess_enabled = query.get("postprocess_enabled") or query.get("postprocessEnabled") or _first_payload_value(
+        payload,
+        ("postprocess_enabled", "postprocessEnabled"),
+    )
+    if explicit_postprocess_enabled is not None:
+        postprocess_enabled = _safe_bool(explicit_postprocess_enabled, postprocess_enabled)
+
+    postprocess_profile = (
+        query.get("postprocess_profile")
+        or query.get("postprocessProfile")
+        or _first_payload_value(payload, ("postprocess_profile", "postprocessProfile"))
+    )
+    if postprocess_profile is None and raw_postprocess is not None and _safe_bool(raw_postprocess, None) is None:
+        postprocess_profile = raw_postprocess
+
+    raw_prompt_aware = query.get("prompt_aware") or query.get("promptAware") or query.get("prompt-aware") or _first_payload_value(
+        payload,
+        ("prompt_aware", "promptAware", "prompt-aware"),
+    )
+    prompt_aware = _safe_bool(raw_prompt_aware, None)
+    prompt_aware_style = (
+        query.get("prompt_aware_style")
+        or query.get("promptAwareStyle")
+        or _first_payload_value(payload, ("prompt_aware_style", "promptAwareStyle"))
+    )
+    return {
+        "postprocess_profile": str(postprocess_profile).strip() if postprocess_profile is not None else None,
+        "postprocess_enabled": postprocess_enabled,
+        "prompt_aware": prompt_aware,
+        "prompt_aware_style": str(prompt_aware_style).strip() if prompt_aware_style is not None else None,
+    }
+
+
 def _openai_error(status_code: int, message: str, *, param: str | None = None, code: str = "invalid_request_error") -> JSONResponse:
     response = JSONResponse(
         status_code=status_code,
@@ -174,6 +231,13 @@ def create_app(service: VoiceGatewayService | None = None) -> FastAPI:
             return _compat_error(401, "Invalid API key")
         return JSONResponse(gateway.voice_settings_payload(voice_id))
 
+    @app.get("/v1/audio/postprocess-profiles")
+    @app.get("/v1/tts/postprocess-profiles")
+    async def tts_postprocess_profiles(request: Request) -> Response:
+        if not gateway.authorized(request):
+            return _openai_error(401, "Invalid API key")
+        return JSONResponse(gateway.tts_postprocess_profiles_payload())
+
     @app.post("/v1/audio/speech")
     async def openai_audio_speech(request: Request) -> Response:
         if not gateway.authorized(request):
@@ -189,6 +253,7 @@ def create_app(service: VoiceGatewayService | None = None) -> FastAPI:
         response_format = normalize_audio_format(payload.get("response_format") or gateway.settings.default_audio_format)
         speed = _safe_float(payload.get("speed"), 1.0)
         language = str(payload.get("language") or "").strip() or None
+        tts_options = _tts_request_options(request, payload)
         try:
             audio_bytes, normalized_format, headers = gateway.synthesize_openai(
                 text=text,
@@ -196,6 +261,7 @@ def create_app(service: VoiceGatewayService | None = None) -> FastAPI:
                 response_format=response_format,
                 speed=speed,
                 language=language,
+                **tts_options,
             )
         except RuntimeError as exc:
             return _openai_error(503, str(exc), code="service_unavailable")
@@ -259,6 +325,7 @@ def create_app(service: VoiceGatewayService | None = None) -> FastAPI:
         output_format = normalize_voice_output_format(
             request.query_params.get("output_format") or payload.get("output_format")
         )
+        tts_options = _tts_request_options(request, payload)
         try:
             audio_bytes, normalized_format, headers = gateway.synthesize_openai(
                 text=text,
@@ -266,6 +333,7 @@ def create_app(service: VoiceGatewayService | None = None) -> FastAPI:
                 response_format=output_format,
                 speed=speed,
                 language=language,
+                **tts_options,
             )
         except RuntimeError as exc:
             return _compat_error(503, str(exc))
@@ -404,6 +472,15 @@ def create_app(service: VoiceGatewayService | None = None) -> FastAPI:
         speed = 1.0
         language: str | None = None
         output_format = normalize_voice_output_format(websocket.query_params.get("output_format"))
+        postprocess_profile = websocket.query_params.get("postprocess_profile") or websocket.query_params.get("postprocess")
+        postprocess_enabled = _safe_bool(websocket.query_params.get("postprocess_enabled"), None)
+        if postprocess_enabled is None:
+            postprocess_enabled = _safe_bool(websocket.query_params.get("postprocess"), None)
+        prompt_aware = _safe_bool(
+            websocket.query_params.get("prompt_aware") or websocket.query_params.get("promptAware"),
+            None,
+        )
+        prompt_aware_style = websocket.query_params.get("prompt_aware_style") or websocket.query_params.get("promptAwareStyle")
         try:
             while True:
                 payload = await _read_json_message(websocket)
@@ -417,6 +494,7 @@ def create_app(service: VoiceGatewayService | None = None) -> FastAPI:
                     speed = _safe_float(payload["voice_settings"].get("speed"), speed)
                 if "language_code" in payload:
                     language = str(payload.get("language_code") or "").strip() or language
+                message_options = _tts_request_options(request=websocket, payload=payload)
                 event_type = str(payload.get("type") or "").strip().lower()
                 if event_type in {"flush", "generate", "try_trigger_generation"}:
                     text = "".join(chunks).strip()
@@ -430,6 +508,10 @@ def create_app(service: VoiceGatewayService | None = None) -> FastAPI:
                             response_format=output_format,
                             speed=speed,
                             language=language,
+                            postprocess_profile=message_options.get("postprocess_profile") or postprocess_profile,
+                            postprocess_enabled=message_options.get("postprocess_enabled") if message_options.get("postprocess_enabled") is not None else postprocess_enabled,
+                            prompt_aware=message_options.get("prompt_aware") if message_options.get("prompt_aware") is not None else prompt_aware,
+                            prompt_aware_style=message_options.get("prompt_aware_style") or prompt_aware_style,
                         )
                     except RuntimeError as exc:
                         await websocket.send_json({"type": "error", "message": str(exc)})

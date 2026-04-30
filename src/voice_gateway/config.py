@@ -70,6 +70,38 @@ def _env_first(names: tuple[str, ...], default: str = "") -> str:
     return default
 
 
+TTS_POSTPROCESS_PROFILES: dict[str, dict[str, str]] = {
+    "sports-commentator-v1": {
+        "name": "Sports commentator",
+        "description": "High-energy broadcast presence with speech-safe EQ, compression, limiter, and gain.",
+    },
+    "broadcast-warm-v1": {
+        "name": "Broadcast warm",
+        "description": "Warmer, less aggressive broadcast polish for conversational narration.",
+    },
+    "narrator-polish-v1": {
+        "name": "Narrator polish",
+        "description": "Clean audiobook-style leveling and presence without a hype-voice push.",
+    },
+    "crisp-radio-v1": {
+        "name": "Crisp radio",
+        "description": "Tighter radio/dispatch intelligibility with stronger presence and bandwidth control.",
+    },
+    "soft-studio-v1": {
+        "name": "Soft studio",
+        "description": "Gentle studio cleanup for softer voices and longer listening sessions.",
+    },
+}
+
+
+TTS_PROMPT_AWARE_STYLE = (
+    "Prompt-aware performance mode is enabled. Interpret bracketed or XML-like tags such as "
+    "[excited], [whisper], [laugh], [pause], [dramatic], or <break time=\"500ms\" /> as voice "
+    "performance directions. Do not speak the tags themselves. Preserve the user's words while using "
+    "the tags only for timing, energy, emotion, and inflection."
+)
+
+
 def _normalize_tts_postprocess_profile_name(name: str) -> str:
     value = name.strip().lower().replace("_", "-").replace(" ", "-")
     aliases = {
@@ -78,7 +110,23 @@ def _normalize_tts_postprocess_profile_name(name: str) -> str:
         "none": "",
         "disabled": "",
         "sports": "sports-commentator-v1",
-        "broadcast": "sports-commentator-v1",
+        "commentator": "sports-commentator-v1",
+        "broadcast": "broadcast-warm-v1",
+        "warm": "broadcast-warm-v1",
+        "broadcast-warm": "broadcast-warm-v1",
+        "broadcast-warm-v1": "broadcast-warm-v1",
+        "narrator": "narrator-polish-v1",
+        "polish": "narrator-polish-v1",
+        "narrator-polish": "narrator-polish-v1",
+        "narrator-polish-v1": "narrator-polish-v1",
+        "radio": "crisp-radio-v1",
+        "crisp": "crisp-radio-v1",
+        "crisp-radio": "crisp-radio-v1",
+        "crisp-radio-v1": "crisp-radio-v1",
+        "soft": "soft-studio-v1",
+        "studio": "soft-studio-v1",
+        "soft-studio": "soft-studio-v1",
+        "soft-studio-v1": "soft-studio-v1",
         "sports-commentator": "sports-commentator-v1",
         "sports-commentary": "sports-commentator-v1",
         "broadcast-sports": "sports-commentator-v1",
@@ -114,11 +162,13 @@ class Settings:
     xiaomi_mimo_tts_voice: str = field(default_factory=lambda: str(os.getenv("XIAOMI_MIMO_TTS_VOICE", os.getenv("XAIOMI_MIMO_TTS_VOICE", "mimo_default")) or "mimo_default").strip())
     xiaomi_mimo_tts_style: str = field(default_factory=lambda: str(os.getenv("XIAOMI_MIMO_TTS_STYLE", os.getenv("XAIOMI_MIMO_TTS_STYLE", "Speak naturally and clearly.")) or "Speak naturally and clearly.").strip())
     kokoro_api_key: str = field(default_factory=lambda: str(os.getenv("KOKORO_API_KEY", "") or "").strip())
-    kokoro_tts_base_url: str = field(default_factory=lambda: str(os.getenv("KOKORO_TTS_BASE_URL", "http://kokoro:8000/v1/audio/speech") or "http://kokoro:8000/v1/audio/speech").strip().rstrip("/"))
+    kokoro_tts_base_url: str = field(default_factory=lambda: str(os.getenv("KOKORO_TTS_BASE_URL", "http://kokoro:8880/v1/audio/speech") or "http://kokoro:8880/v1/audio/speech").strip().rstrip("/"))
     kokoro_tts_model: str = field(default_factory=lambda: str(os.getenv("KOKORO_TTS_MODEL", "kokoro") or "kokoro").strip())
     kokoro_tts_voice: str = field(default_factory=lambda: str(os.getenv("KOKORO_TTS_VOICE", "af_bella_725_H") or "af_bella_725_H").strip())
     tts_postprocess_enabled: bool = field(default_factory=lambda: _env_bool("TTS_POSTPROCESS_ENABLED", True))
     tts_postprocess_profile: str = field(default_factory=lambda: _normalize_tts_postprocess_profile_name(str(os.getenv("TTS_POSTPROCESS_PROFILE", "sports-commentator-v1") or "sports-commentator-v1")))
+    tts_prompt_aware_default: bool = field(default_factory=lambda: _env_bool("TTS_PROMPT_AWARE_DEFAULT", False))
+    tts_prompt_aware_style: str = field(default_factory=lambda: str(os.getenv("TTS_PROMPT_AWARE_STYLE", TTS_PROMPT_AWARE_STYLE) or TTS_PROMPT_AWARE_STYLE).strip())
     tts_narrator_unifier_enabled: bool = field(default_factory=lambda: _env_bool("TTS_NARRATOR_UNIFIER_ENABLED", True))
     tts_narrator_target_dbfs: float = field(default_factory=lambda: _env_float("TTS_NARRATOR_TARGET_DBFS", -18.0, -30.0, -8.0))
     tts_narrator_en_pitch: float = field(default_factory=lambda: _env_float("TTS_NARRATOR_EN_PITCH", 1.02, 0.9, 1.1))
@@ -172,10 +222,32 @@ class Settings:
                 deduped.append(backend)
         return tuple(deduped)
 
-    def active_tts_postprocess_profile(self) -> str:
-        if not self.tts_postprocess_enabled:
+    def active_tts_postprocess_profile(self, *, requested_profile: str | None = None, enabled: bool | None = None) -> str:
+        if enabled is False or (enabled is None and not self.tts_postprocess_enabled):
             return ""
-        return _normalize_tts_postprocess_profile_name(self.tts_postprocess_profile)
+        profile = self.tts_postprocess_profile if requested_profile is None else requested_profile
+        return _normalize_tts_postprocess_profile_name(profile)
+
+    def tts_postprocess_profiles_payload(self) -> dict[str, object]:
+        return {
+            "default_profile": self.active_tts_postprocess_profile(),
+            "profiles": [
+                {
+                    "id": profile_id,
+                    **metadata,
+                }
+                for profile_id, metadata in TTS_POSTPROCESS_PROFILES.items()
+            ],
+            "aliases": {
+                "off": "",
+                "sports": "sports-commentator-v1",
+                "commentator": "sports-commentator-v1",
+                "broadcast": "broadcast-warm-v1",
+                "narrator": "narrator-polish-v1",
+                "radio": "crisp-radio-v1",
+                "soft": "soft-studio-v1",
+            },
+        }
 
 
 _SETTINGS: Settings | None = None

@@ -15,6 +15,7 @@ Fork Tales voice pipeline extracted into the standalone Open Hax service package
 - `POST /v1/audio/speech`
 - `POST /v1/audio/transcriptions`
 - `POST /v1/audio/translations`
+- `GET /v1/audio/postprocess-profiles`
 
 ### Voxx voice catalog and provider-style routes
 - `GET /v1/voices`
@@ -174,24 +175,69 @@ Voxx also exposes the backend actually used for a synthesis request through the 
 
 That lets callers keep pointing at Voxx while Voxx reports whether Kokoro, Xiaomi MiMo, Requesty, OpenAI, Melo, or eSpeak produced the audio.
 
-## Sports commentator postprocess
+## TTS postprocess + prompt-aware performance options
 
 Yes: Voxx already had a conservative narrator-unifier lineage from `orgs/octave-commons/fork_tales/part64/code/tts_service.py`.
 
-What changed here is that Voxx now has a **final backend-agnostic postprocess stage** so the same commentator-style mastering can shape audio from any TTS backend, not just local Melo.
+Voxx has a **final backend-agnostic postprocess stage** so the same mastering profiles can shape audio from any TTS backend, not just local Melo.
 
 Default profile:
 
 ```bash
 TTS_POSTPROCESS_ENABLED=1
 TTS_POSTPROCESS_PROFILE=sports-commentator-v1
+TTS_PROMPT_AWARE_DEFAULT=0
 ```
 
-Current profile behavior is intentionally conservative and speech-safe:
-- presence / intelligibility EQ lift
-- light broadcast-style compression
-- limiter + output gain
-- keeps existing local narrator unifier for Melo while also styling remote-provider output
+Available profile IDs and common aliases:
+
+| Profile | Aliases | Use |
+|---|---|---|
+| `sports-commentator-v1` | `sports`, `commentator` | high-energy broadcast / sports announcing |
+| `broadcast-warm-v1` | `broadcast`, `warm` | warmer conversational broadcast polish |
+| `narrator-polish-v1` | `narrator`, `polish` | audiobook-style leveling and presence |
+| `crisp-radio-v1` | `radio`, `crisp` | tight radio/dispatch intelligibility |
+| `soft-studio-v1` | `soft`, `studio` | gentle cleanup for softer long-form speech |
+
+List the current profile catalog through the API:
+
+```bash
+curl -H "Authorization: Bearer $VOICE_GATEWAY_API_KEY" \
+  http://127.0.0.1:8787/v1/audio/postprocess-profiles
+```
+
+Set a global default with env vars, or override per request with query strings or JSON fields. These are equivalent:
+
+```bash
+curl -X POST 'http://127.0.0.1:8787/v1/audio/speech?postprocess_profile=radio&prompt_aware=1' \
+  -H "Authorization: Bearer $VOICE_GATEWAY_API_KEY" \
+  -H 'Content-Type: application/json' \
+  --data '{"model":"kokoro","voice":"alloy","input":"[excited] They are making the comeback!","response_format":"mp3"}' \
+  --output out.mp3
+
+curl -X POST http://127.0.0.1:8787/v1/audio/speech \
+  -H "Authorization: Bearer $VOICE_GATEWAY_API_KEY" \
+  -H 'Content-Type: application/json' \
+  --data '{"model":"kokoro","voice":"alloy","input":"[excited] They are making the comeback!","response_format":"mp3","postprocess_profile":"radio","prompt_aware":true}' \
+  --output out.mp3
+```
+
+Request options:
+
+| Option | Where | Values |
+|---|---|---|
+| `postprocess_profile` / `postprocessProfile` | query or JSON | profile ID or alias; `off`/`none` disables |
+| `postprocess` | query or JSON | `0`/`false`/`off`, `1`/`true`, or a profile alias |
+| `postprocess_enabled` / `postprocessEnabled` | query or JSON | explicit boolean override |
+| `prompt_aware` / `promptAware` | query or JSON | `1`/`true` to enable tag-aware performance prompting |
+| `prompt_aware_style` / `promptAwareStyle` | query or JSON | custom instruction for tag interpretation |
+
+When `prompt_aware=1`, Voxx asks prompt-capable upstream providers to treat bracketed/XML-like tags as performance directions, not spoken words. For example: `[excited]`, `[whisper]`, `[laugh]`, `[pause]`, `[dramatic]`, or `<break time="500ms" />`. This is provider-dependent: Xiaomi MiMo receives the prompt-aware instruction in its chat style message, and OpenAI-compatible remote routes receive it as `instructions`; local Kokoro/Melo/eSpeak still receive the raw input text.
+
+Responses include:
+
+- `x-openhax-tts-postprocess-profile`: active final profile or `none`
+- `x-openhax-tts-prompt-aware`: `1` when prompt-aware instructions were active, otherwise `0`
 
 Disable it completely with:
 

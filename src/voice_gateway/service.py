@@ -75,6 +75,9 @@ class VoiceGatewayService:
         voice = resolve_voice(voice_id)
         return voice.voice_settings()
 
+    def tts_postprocess_profiles_payload(self) -> dict[str, object]:
+        return self.settings.tts_postprocess_profiles_payload()
+
     def synthesize_openai(
         self,
         *,
@@ -83,6 +86,10 @@ class VoiceGatewayService:
         response_format: str,
         speed: float,
         language: str | None,
+        postprocess_profile: str | None = None,
+        postprocess_enabled: bool | None = None,
+        prompt_aware: bool | None = None,
+        prompt_aware_style: str | None = None,
     ) -> tuple[bytes, str, dict[str, str]]:
         voice = resolve_voice(voice_id, language)
         audio_bytes, normalized_format = self.tts_engine.synthesize(
@@ -92,6 +99,10 @@ class VoiceGatewayService:
             speed=speed,
             language=language,
             requested_voice_id=voice_id,
+            postprocess_profile=postprocess_profile,
+            postprocess_enabled=postprocess_enabled,
+            prompt_aware=prompt_aware,
+            prompt_aware_style=prompt_aware_style,
         )
         headers = {
             "x-openhax-voice-id": voice.id,
@@ -100,6 +111,9 @@ class VoiceGatewayService:
         backend = str(getattr(self.tts_engine, "last_backend", "") or "").strip()
         if backend:
             headers["x-openhax-tts-backend"] = backend
+        postprocess = str(getattr(self.tts_engine, "last_postprocess_profile", "") or "").strip()
+        headers["x-openhax-tts-postprocess-profile"] = postprocess or "none"
+        headers["x-openhax-tts-prompt-aware"] = "1" if bool(getattr(self.tts_engine, "last_prompt_aware", False)) else "0"
         if voice_id:
             headers["x-openhax-requested-voice-id"] = voice_id
         return audio_bytes, normalized_format, headers

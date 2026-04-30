@@ -68,6 +68,44 @@ def test_openai_speech_endpoint_returns_audio_bytes(tmp_path: Path) -> None:
     assert tts_engine.calls[0]["requested_voice_id"] == "nova"
 
 
+def test_openai_speech_endpoint_accepts_tts_query_options(tmp_path: Path) -> None:
+    client, tts_engine, _stt_engine = build_client(tmp_path)
+
+    response = client.post(
+        "/v1/audio/speech?postprocess_profile=crisp-radio-v1&prompt_aware=1&prompt_aware_style=Honor%20tags",
+        headers={"Authorization": "Bearer secret-token"},
+        json={
+            "model": "gpt-4o-mini-tts",
+            "input": "[excited] hello from openhax",
+            "voice": "nova",
+            "response_format": "mp3",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.headers["x-openhax-tts-postprocess-profile"] == "crisp-radio-v1"
+    assert response.headers["x-openhax-tts-prompt-aware"] == "1"
+    assert tts_engine.calls[0]["postprocess_profile"] == "crisp-radio-v1"
+    assert tts_engine.calls[0]["prompt_aware"] is True
+    assert tts_engine.calls[0]["prompt_aware_style"] == "Honor tags"
+
+
+def test_tts_postprocess_profiles_endpoint(tmp_path: Path) -> None:
+    client, _tts_engine, _stt_engine = build_client(tmp_path)
+
+    response = client.get(
+        "/v1/audio/postprocess-profiles",
+        headers={"Authorization": "Bearer secret-token"},
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    profile_ids = {profile["id"] for profile in payload["profiles"]}
+    assert "sports-commentator-v1" in profile_ids
+    assert "broadcast-warm-v1" in profile_ids
+    assert "crisp-radio-v1" in profile_ids
+
+
 def test_openai_transcription_and_translation_routes(tmp_path: Path) -> None:
     client, _tts_engine, stt_engine = build_client(tmp_path)
 
@@ -115,6 +153,20 @@ def test_voice_catalog_routes_and_provider_style_tts_route(tmp_path: Path) -> No
     assert tts_response.status_code == 200
     assert tts_response.headers["content-type"].startswith("audio/wav")
     assert tts_engine.calls[-1]["voice"] == "alloy"
+
+
+def test_provider_style_tts_route_accepts_postprocess_body_options(tmp_path: Path) -> None:
+    client, tts_engine, _stt_engine = build_client(tmp_path)
+
+    response = client.post(
+        "/v1/text-to-speech/rachel?prompt_aware=true",
+        headers={"xi-api-key": "secret-token"},
+        json={"text": "[whisper] provider style voice", "postprocess": "soft"},
+    )
+
+    assert response.status_code == 200
+    assert tts_engine.calls[-1]["postprocess_profile"] == "soft"
+    assert tts_engine.calls[-1]["prompt_aware"] is True
 
 
 def test_provider_style_stt_route_persists_transcript(tmp_path: Path) -> None:
