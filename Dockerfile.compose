@@ -1,32 +1,51 @@
 # syntax=docker/dockerfile:1.7
 
-FROM python:3.12-slim
+FROM python:3.11-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PYTHONPATH=/app/src \
     VOICE_GATEWAY_DATA_DIR=/app/data \
     VOICE_GATEWAY_HOST=0.0.0.0 \
-    VOICE_GATEWAY_PORT=8788
+    VOICE_GATEWAY_PORT=8788 \
+    XDG_CACHE_HOME=/app/cache \
+    HF_HOME=/app/cache/huggingface \
+    TORCH_HOME=/app/cache/torch \
+    NLTK_DATA=/usr/local/share/nltk_data
 
 WORKDIR /app
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
+      build-essential \
       espeak-ng \
       ffmpeg \
+      git \
+      libmecab-dev \
       libsndfile1 \
+      mecab \
     && rm -rf /var/lib/apt/lists/* \
     && groupadd -g 1000 appuser \
     && useradd -m -u 1000 -g 1000 appuser
 
 COPY requirements.txt README.md .env.example package.json /app/
-RUN pip install --no-cache-dir -r requirements.txt
+
+RUN mkdir -p /app/cache /usr/local/share/nltk_data
+
+RUN pip install --no-cache-dir -r requirements.txt \
+    && pip install --no-cache-dir --index-url https://download.pytorch.org/whl/cpu \
+      torch \
+      torchaudio \
+    && pip install --no-cache-dir \
+      git+https://github.com/myshell-ai/MeloTTS.git \
+    && python -m unidic download \
+    && python -m nltk.downloader -d /usr/local/share/nltk_data averaged_perceptron_tagger averaged_perceptron_tagger_eng cmudict \
+    && python -m melo.init_downloads
 
 COPY src /app/src
 
 RUN mkdir -p /app/data \
-    && chown -R appuser:appuser /app
+    && chown -R appuser:appuser /app /usr/local/share/nltk_data
 
 EXPOSE 8788
 

@@ -7,8 +7,8 @@ langid>=1.1,<2
 pytest>=8,<9
 httpx>=0.28,<1
 
-# Optional runtime dependencies used by the extracted Fork Tales pipeline:
-# - torch
-# - MeloTTS (install from https://github.com/myshell-ai/MeloTTS)
-# - ffmpeg (system package)
-# - whisper.cpp binary + model (optional fallback)
+# Optional local MeloTTS runtime dependencies are installed by Dockerfile.compose
+# from https://github.com/myshell-ai/MeloTTS because the PyPI sdist is incomplete.
+# Keep requirements.txt lightweight for local API tests; use the compose image when
+# validating the real melo backend.
+# Optional whisper.cpp binary + model remains a host/runtime fallback for STT.

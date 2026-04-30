@@ -74,7 +74,8 @@ Expected health payload shape:
 ```
 
 Notes:
-- The Compose runtime installs `espeak-ng` + `ffmpeg` so TTS requests can fall back even when MeloTTS is not present.
+- The Compose runtime installs `espeak-ng`, `ffmpeg`, and MeloTTS dependencies so local `kokoro,melo,espeak` fallback order works without remote providers.
+- MeloTTS is installed from GitHub in `Dockerfile.compose` because the PyPI `MeloTTS` sdist is incomplete; the image uses Python 3.11 plus CPU PyTorch/Torchaudio for Melo.
 - `faster-whisper` is installed, but model weights may still download on first transcription use.
 - Override the default API token with `VOICE_GATEWAY_API_KEY=... docker compose up --build` if you do not want the dev default.
 - If port `8788` is already busy, run `VOXX_PORT=8798 docker compose up --build` (or choose another free host port).
@@ -253,6 +254,34 @@ TTS_POSTPROCESS_ENABLED=0
 ```
 
 This means `xiaomi_mimo`, `kokoro`, `requesty`, `openai`, `melo`, and even `espeak` fallback outputs can all be pushed toward the same high-energy sports-commentary texture through Voxx.
+
+## MeloTTS local fallback
+
+Melo runs inside the Voxx application container and is selected by including `melo` in `VOICE_GATEWAY_TTS_BACKEND_ORDER`. The compose image installs:
+
+- Python 3.11
+- CPU PyTorch/Torchaudio from the PyTorch CPU wheel index
+- MeloTTS from `https://github.com/myshell-ai/MeloTTS.git`
+- UniDic and NLTK assets needed by `melo.api.TTS`
+
+The PyPI `MeloTTS` package is not used because its source distribution is missing `requirements.txt` and fails to build. Validate Melo with:
+
+```bash
+VOICE_GATEWAY_TTS_BACKEND_ORDER=melo docker compose up -d --no-build voxx
+curl -X POST 'http://127.0.0.1:8787/v1/audio/speech?postprocess=off' \
+  -H "Authorization: Bearer ${VOICE_GATEWAY_API_KEY:-dev-token}" \
+  -H 'Content-Type: application/json' \
+  --data '{"model":"kokoro","voice":"alloy","input":"Melo local fallback check.","response_format":"mp3"}' \
+  --output /tmp/voxx-melo.mp3
+```
+
+Restore the stable local chain after one-off validation:
+
+```bash
+VOICE_GATEWAY_TTS_BACKEND_ORDER=kokoro,melo,espeak docker compose up -d --no-build voxx
+```
+
+Melo is local and queue-protected. If a remote provider returns quota/status errors, keep callers on Voxx and let the backend order degrade to `melo` or `espeak` after Kokoro.
 
 ## Processing queue and runtime guardrails
 
