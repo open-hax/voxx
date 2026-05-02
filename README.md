@@ -192,13 +192,14 @@ Default profile:
 ```bash
 TTS_POSTPROCESS_ENABLED=1
 TTS_POSTPROCESS_PROFILE=sports-commentator-v1
-TTS_PROMPT_AWARE_DEFAULT=0
+TTS_PROMPT_AWARE_DEFAULT=1
 ```
 
 Available profile IDs and common aliases:
 
 | Profile | Aliases | Use |
 |---|---|---|
+| `sutured-autotune-v1` | `sutured`, `suture`, `autotune`, `sovereign-suture` | opt-in musical robot speech with pitch lift, vibrato, echo, and tag-driven contours |
 | `sports-commentator-v1` | `sports`, `commentator` | high-energy broadcast / sports announcing |
 | `broadcast-warm-v1` | `broadcast`, `warm` | warmer conversational broadcast polish |
 | `narrator-polish-v1` | `narrator`, `polish` | audiobook-style leveling and presence |
@@ -238,7 +239,7 @@ Request options:
 | `prompt_aware` / `promptAware` | query or JSON | `1`/`true` to enable tag-aware performance prompting |
 | `prompt_aware_style` / `promptAwareStyle` | query or JSON | custom instruction for tag interpretation |
 
-When `prompt_aware=1`, Voxx asks prompt-capable upstream providers to treat bracketed/XML-like tags as performance directions, not spoken words. For example: `[excited]`, `[whisper]`, `[laugh]`, `[pause]`, `[dramatic]`, or `<break time="500ms" />`. This is provider-dependent: Xiaomi MiMo receives the prompt-aware instruction in its chat style message, and OpenAI-compatible remote routes receive it as `instructions`; local Kokoro/Melo/eSpeak still receive the raw input text.
+Prompt-aware mode is on by default (`TTS_PROMPT_AWARE_DEFAULT=1`) and can be disabled per request with `prompt_aware=false` or globally with `TTS_PROMPT_AWARE_DEFAULT=0`. When active, Voxx consumes bracketed/XML-like tags itself instead of forwarding them as spoken text. For example: `[excited]`, `[whisper]`, `[laugh]`, `[pause]`, `[dramatic]`, `[sing]`, `[stretch]`, `[glitch]`, `[suture]`, or `<break time="500ms" />`. Use tags sparingly at phrase boundaries: bracket tags select Voxx segment-level inflection filters, `[pause]` and `<break ... />` insert silence, and `[laugh]` inserts a short nonverbal effect. The upstream TTS backend receives clean segment text; Voxx then stitches the rendered segments together and applies the tag-driven postprocessing plus the final mastering profile. Musical tags log a `performance_directive` with pitch/tempo ratios and contour labels under the shared `render_id` so overprocessed or underpowered robot audio can be traced without guessing.
 
 Responses include:
 
@@ -253,7 +254,7 @@ Disable it completely with:
 TTS_POSTPROCESS_ENABLED=0
 ```
 
-This means `xiaomi_mimo`, `kokoro`, `requesty`, `openai`, `melo`, and even `espeak` fallback outputs can all be pushed toward the same high-energy sports-commentary texture through Voxx.
+This means `xiaomi_mimo`, `kokoro`, `requesty`, `openai`, `melo`, and even `espeak` fallback outputs can all be pushed toward the same profile texture through Voxx. Use `sports-commentator-v1` for general energetic speech; use `sutured-autotune-v1` only when you intentionally want the recovered OpenPlanner/Sovereign-Suture-style pitch/time performance rather than clean narration.
 
 ## MeloTTS local fallback
 

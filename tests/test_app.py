@@ -12,8 +12,8 @@ from voice_gateway.transcripts import TranscriptStore
 from voice_gateway.tts import StubTtsEngine
 
 
-def build_client(tmp_path: Path) -> tuple[TestClient, StubTtsEngine, StubSttEngine]:
-    settings = Settings(api_key="secret-token", data_dir=tmp_path / "runtime")
+def build_client(tmp_path: Path, *, stt_enabled: bool = True) -> tuple[TestClient, StubTtsEngine, StubSttEngine]:
+    settings = Settings(api_key="secret-token", data_dir=tmp_path / "runtime", stt_enabled=stt_enabled)
     tts_engine = StubTtsEngine(audio_bytes=b"ID3stub-audio")
     stt_engine = StubSttEngine(text="heard words")
     gateway = VoiceGatewayService(
@@ -31,6 +31,7 @@ def test_models_require_auth_and_return_catalog(tmp_path: Path) -> None:
     health = client.get("/healthz")
     assert health.status_code == 200
     assert health.json()["service"] == "voxx"
+    assert health.json()["stt_enabled"] is True
     assert health.json()["tts_queue"]["max_concurrent"] == 1
 
     unauthorized = client.get("/v1/models")
@@ -104,9 +105,27 @@ def test_tts_postprocess_profiles_endpoint(tmp_path: Path) -> None:
     assert response.status_code == 200
     payload = response.json()
     profile_ids = {profile["id"] for profile in payload["profiles"]}
+    assert "sutured-autotune-v1" in profile_ids
     assert "sports-commentator-v1" in profile_ids
     assert "broadcast-warm-v1" in profile_ids
     assert "crisp-radio-v1" in profile_ids
+    sutured = next(profile for profile in payload["profiles"] if profile["id"] == "sutured-autotune-v1")
+    assert sutured["labels"]["lineage"] == "openplanner-sovereign-suture"
+
+
+def test_openai_transcription_route_returns_503_when_voxx_stt_is_disabled(tmp_path: Path) -> None:
+    client, _tts_engine, stt_engine = build_client(tmp_path, stt_enabled=False)
+
+    response = client.post(
+        "/v1/audio/transcriptions",
+        headers={"Authorization": "Bearer secret-token"},
+        files={"file": ("clip.webm", b"audio-data", "audio/webm")},
+        data={"model": "gpt-4o-transcribe", "response_format": "json", "language": "en"},
+    )
+
+    assert response.status_code == 503
+    assert "Voxx STT is disabled" in response.json()["error"]["message"]
+    assert stt_engine.calls == []
 
 
 def test_openai_transcription_and_translation_routes(tmp_path: Path) -> None:

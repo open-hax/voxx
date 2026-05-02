@@ -20,6 +20,7 @@ from .config import Settings, get_settings
 from .stt import LocalSttEngine
 from .transcripts import TranscriptStore
 from .tts import LocalTtsEngine
+from .types import TranscriptResult
 
 
 class TtsQueueFullError(RuntimeError):
@@ -207,6 +208,15 @@ class VoiceGatewayService:
         language: str | None,
         task: str,
     ) -> Any:
+        if not self.settings.stt_enabled:
+            return TranscriptResult(
+                ok=False,
+                engine="disabled",
+                text="",
+                error="Voxx STT is disabled. Use the external Knoxx NPU STT service or set VOICE_GATEWAY_STT_ENABLED=1 to opt in.",
+                language=language,
+                task=task,
+            )
         return self.stt_engine.transcribe(audio_bytes, mime=mime, language=language, task=task)
 
     def store_transcript(

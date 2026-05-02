@@ -226,6 +226,16 @@ class LocalSttEngine:
         language: str | None = None,
         task: str = "transcribe",
     ) -> TranscriptResult:
+        if not self.settings.stt_enabled:
+            return TranscriptResult(
+                ok=False,
+                engine="disabled",
+                text="",
+                error="Voxx STT is disabled. Use the external Knoxx NPU STT service or set VOICE_GATEWAY_STT_ENABLED=1 to opt in.",
+                language=language,
+                task=task,
+            )
+
         if not audio_bytes:
             return TranscriptResult(
                 ok=False,

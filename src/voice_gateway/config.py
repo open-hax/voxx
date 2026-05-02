@@ -70,35 +70,51 @@ def _env_first(names: tuple[str, ...], default: str = "") -> str:
     return default
 
 
-TTS_POSTPROCESS_PROFILES: dict[str, dict[str, str]] = {
+TTS_POSTPROCESS_PROFILES: dict[str, dict[str, object]] = {
+    "sutured-autotune-v1": {
+        "name": "Sutured autotune",
+        "description": "Expressive Voxx performance mode inspired by the recovered Sovereign Suture pipeline: deliberate pitch lift, vibrato, short echo, compression, and prompt-aware segment contours.",
+        "labels": {
+            "lineage": "openplanner-sovereign-suture",
+            "transform_intensity": "high",
+            "uses_pitch_transform": True,
+            "uses_time_transform": True,
+            "best_for": ["short social drops", "musical robot speech", "high-energy Discord voice"],
+        },
+    },
     "sports-commentator-v1": {
         "name": "Sports commentator",
         "description": "High-energy broadcast presence with speech-safe EQ, compression, limiter, and gain.",
+        "labels": {"transform_intensity": "medium", "uses_pitch_transform": False, "uses_time_transform": False},
     },
     "broadcast-warm-v1": {
         "name": "Broadcast warm",
         "description": "Warmer, less aggressive broadcast polish for conversational narration.",
+        "labels": {"transform_intensity": "low", "uses_pitch_transform": False, "uses_time_transform": False},
     },
     "narrator-polish-v1": {
         "name": "Narrator polish",
         "description": "Clean audiobook-style leveling and presence without a hype-voice push.",
+        "labels": {"transform_intensity": "low", "uses_pitch_transform": False, "uses_time_transform": False},
     },
     "crisp-radio-v1": {
         "name": "Crisp radio",
         "description": "Tighter radio/dispatch intelligibility with stronger presence and bandwidth control.",
+        "labels": {"transform_intensity": "medium", "uses_pitch_transform": False, "uses_time_transform": False},
     },
     "soft-studio-v1": {
         "name": "Soft studio",
         "description": "Gentle studio cleanup for softer voices and longer listening sessions.",
+        "labels": {"transform_intensity": "low", "uses_pitch_transform": False, "uses_time_transform": False},
     },
 }
 
 
 TTS_PROMPT_AWARE_STYLE = (
-    "Prompt-aware performance mode is enabled. Interpret bracketed or XML-like tags such as "
-    "[excited], [whisper], [laugh], [pause], [dramatic], or <break time=\"500ms\" /> as voice "
-    "performance directions. Do not speak the tags themselves. Preserve the user's words while using "
-    "the tags only for timing, energy, emotion, and inflection."
+    "Prompt-aware performance mode is enabled. Voxx consumes bracketed or XML-like tags such as "
+    "[excited], [whisper], [laugh], [pause], [dramatic], [sing], [stretch], [glitch], [suture], "
+    "or <break time=\"500ms\" /> as voice postprocessing directions. Do not speak the tags themselves; use them only for timing, energy, "
+    "emotion, and inflection."
 )
 
 
@@ -109,6 +125,12 @@ def _normalize_tts_postprocess_profile_name(name: str) -> str:
         "off": "",
         "none": "",
         "disabled": "",
+        "sutured": "sutured-autotune-v1",
+        "suture": "sutured-autotune-v1",
+        "autotune": "sutured-autotune-v1",
+        "sutured-autotune": "sutured-autotune-v1",
+        "sutured-autotune-v1": "sutured-autotune-v1",
+        "sovereign-suture": "sutured-autotune-v1",
         "sports": "sports-commentator-v1",
         "commentator": "sports-commentator-v1",
         "broadcast": "broadcast-warm-v1",
@@ -170,7 +192,7 @@ class Settings:
     kokoro_tts_voice: str = field(default_factory=lambda: str(os.getenv("KOKORO_TTS_VOICE", "af_bella_725_H") or "af_bella_725_H").strip())
     tts_postprocess_enabled: bool = field(default_factory=lambda: _env_bool("TTS_POSTPROCESS_ENABLED", True))
     tts_postprocess_profile: str = field(default_factory=lambda: _normalize_tts_postprocess_profile_name(str(os.getenv("TTS_POSTPROCESS_PROFILE", "sports-commentator-v1") or "sports-commentator-v1")))
-    tts_prompt_aware_default: bool = field(default_factory=lambda: _env_bool("TTS_PROMPT_AWARE_DEFAULT", False))
+    tts_prompt_aware_default: bool = field(default_factory=lambda: _env_bool("TTS_PROMPT_AWARE_DEFAULT", True))
     tts_prompt_aware_style: str = field(default_factory=lambda: str(os.getenv("TTS_PROMPT_AWARE_STYLE", TTS_PROMPT_AWARE_STYLE) or TTS_PROMPT_AWARE_STYLE).strip())
     tts_narrator_unifier_enabled: bool = field(default_factory=lambda: _env_bool("TTS_NARRATOR_UNIFIER_ENABLED", True))
     tts_narrator_target_dbfs: float = field(default_factory=lambda: _env_float("TTS_NARRATOR_TARGET_DBFS", -18.0, -30.0, -8.0))
@@ -184,6 +206,7 @@ class Settings:
     tts_narrator_envelope_window_ms: int = field(default_factory=lambda: _env_int("TTS_NARRATOR_ENVELOPE_WINDOW_MS", 60, 20, 400))
     tts_narrator_envelope_strength: float = field(default_factory=lambda: _env_float("TTS_NARRATOR_ENVELOPE_STRENGTH", 0.12, 0.0, 0.5))
     tts_narrator_envelope_max_gain_db: float = field(default_factory=lambda: _env_float("TTS_NARRATOR_ENVELOPE_MAX_GAIN_DB", 1.2, 0.2, 8.0))
+    stt_enabled: bool = field(default_factory=lambda: _env_bool("VOICE_GATEWAY_STT_ENABLED", False))
     stt_faster_whisper_model: str = field(default_factory=lambda: str(os.getenv("FASTER_WHISPER_MODEL", "small") or "small").strip())
     stt_faster_whisper_device: str = field(default_factory=lambda: str(os.getenv("FASTER_WHISPER_DEVICE", "auto") or "auto").strip())
     stt_faster_whisper_compute_type: str = field(default_factory=lambda: str(os.getenv("FASTER_WHISPER_COMPUTE_TYPE", "int8") or "int8").strip())
@@ -243,6 +266,10 @@ class Settings:
             ],
             "aliases": {
                 "off": "",
+                "sutured": "sutured-autotune-v1",
+                "suture": "sutured-autotune-v1",
+                "autotune": "sutured-autotune-v1",
+                "sovereign-suture": "sutured-autotune-v1",
                 "sports": "sports-commentator-v1",
                 "commentator": "sports-commentator-v1",
                 "broadcast": "broadcast-warm-v1",

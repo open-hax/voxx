@@ -193,6 +193,7 @@ def create_app(service: VoiceGatewayService | None = None) -> FastAPI:
             "service": "voxx",
             "requires_api_key": bool(gateway.settings.api_key),
             "model_count": len(gateway.openai_models_payload()["data"]),
+            "stt_enabled": gateway.settings.stt_enabled,
             "tts_queue": gateway.tts_queue_payload(),
         }
 
@@ -291,7 +292,8 @@ def create_app(service: VoiceGatewayService | None = None) -> FastAPI:
             task=task,
         )
         if not result.ok:
-            status_code = 503 if "backend active" in str(result.error or "").lower() else 400
+            error_text = str(result.error or "").lower()
+            status_code = 503 if "backend active" in error_text or "disabled" in error_text else 400
             return _openai_error(status_code, str(result.error or "transcription failed"), code="audio_processing_error")
         record = gateway.store_transcript(
             source_name=str(upload["file_name"]),
@@ -375,7 +377,8 @@ def create_app(service: VoiceGatewayService | None = None) -> FastAPI:
             task="transcribe",
         )
         if not result.ok:
-            status_code = 503 if "backend active" in str(result.error or "").lower() else 400
+            error_text = str(result.error or "").lower()
+            status_code = 503 if "backend active" in error_text or "disabled" in error_text else 400
             return _compat_error(status_code, str(result.error or "transcription failed"))
         record = gateway.store_transcript(
             source_name=str(upload["file_name"]),
