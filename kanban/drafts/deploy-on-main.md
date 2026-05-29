@@ -1,3 +1,17 @@
+---
+uuid: "orgs-open-hax-archived-voxx-kanban-orgs-open-hax-archived-voxx-specs-drafts-deploy-on-main-md"
+title: "Voxx deploy on main"
+status: incoming
+priority: P3
+labels: ["specs", "migrated-spec"]
+created_at: "2026-05-29T04:01:22.560Z"
+source: "orgs/open-hax/archived/voxx/specs/drafts/deploy-on-main.md"
+category: "specs"
+---
+
+> Source: `orgs/open-hax/archived/voxx/specs/drafts/deploy-on-main.md`
+> Migrated-to-kanban: `orgs/open-hax/archived/voxx/kanban/drafts/deploy-on-main.md`
+
 # Voxx deploy on main
 
 ## Status

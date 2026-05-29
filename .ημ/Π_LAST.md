@@ -1,18 +1,10 @@
-# Π handoff
+# Π handoff — eta-mu kanban migration (voxx)
 
-- time: 2026-03-21T21:33:31Z
-- branch: main
-- pre-Π HEAD: 7df28c5
-- Π HEAD: pending at capture time; resolved by the final commit after artifact assembly
+- time: 2026-05-29T04:03:45Z
+- batch: /tmp/eta-mu-kanban-batches/agent_open_hax_other.json
+- migration: node services/eta-mu/kanban/scripts/migrate-specs-to-kanban.mjs --root /home/err/devel --manifest /tmp/eta-mu-kanban-batches/agent_open_hax_other.json
+- verification: eta-mu-beta kanban count --tasks-dir for each listed board
+- concurrent guardrail: staged paths are limited to migrated kanban directories, removed spec/specs directories, .ημ handoff artifacts, and later parent submodule pointers where applicable
 
-## Summary
-- Add the source-side benchmark harness scripts/benchmark_openai_speech.py and the big.ussy/ussy2 Melo postprocess benchmark draft for reproducible cross-host comparison work.
-- Refresh receipts and .ημ handoff artifacts so the root workspace can carry the exact Voxx benchmark-planning snapshot.
-
-## Notes
-- push branch: pi/fork-tax/2026-03-21-211345
-- origin remains git@github.com:open-hax/voxx.git; snapshot published on a dedicated Π branch plus tag.
-
-## Verification
-- pass: pnpm test (12 passed)
-- pass: python3 -m py_compile scripts/benchmark_openai_speech.py
+## Boards
+- kanban

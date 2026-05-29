@@ -1,3 +1,17 @@
+---
+uuid: "orgs-open-hax-archived-voxx-kanban-orgs-open-hax-archived-voxx-specs-drafts-big-ussy-ussy2-melo-postprocess-benchmark-md"
+title: "Voxx Melo postprocess benchmark on big.ussy + ussy2"
+status: incoming
+priority: P3
+labels: ["specs", "migrated-spec"]
+created_at: "2026-05-29T04:01:22.561Z"
+source: "orgs/open-hax/archived/voxx/specs/drafts/big-ussy-ussy2-melo-postprocess-benchmark.md"
+category: "specs"
+---
+
+> Source: `orgs/open-hax/archived/voxx/specs/drafts/big-ussy-ussy2-melo-postprocess-benchmark.md`
+> Migrated-to-kanban: `orgs/open-hax/archived/voxx/kanban/drafts/big-ussy-ussy2-melo-postprocess-benchmark.md`
+
 # Voxx Melo postprocess benchmark on big.ussy + ussy2
 
 ## Status

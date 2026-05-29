@@ -1,25 +1,9 @@
-(Π_STATE
-  (time "2026-03-21T21:33:31Z")
-  (branch "main")
-  (pre_head "7df28c5")
-  (dirty true)
-  (checks
-    (check (status passed) (command "pnpm test (12 passed)"))
-    (check (status passed) (command "python3 -m py_compile scripts/benchmark_openai_speech.py"))
-  )
-  (repo_notes
-    (upstream "git@github.com:open-hax/voxx.git")
-    (status_digest "177a-4135-40b7-7450")
-    (note "Add the source-side benchmark harness scripts/benchmark_openai_speech.py and the big.ussy/ussy2 Melo postprocess benchmark draft for reproducible cross-host comparison work.")
-    (note "Refresh receipts and .ημ handoff artifacts so the root workspace can carry the exact Voxx benchmark-planning snapshot.")
-    (note "push branch: pi/fork-tax/2026-03-21-211345")
-    (changed_file ".ημ/registry.jsonl")
-    (changed_file ".ημ/Π_LAST.md")
-    (changed_file ".ημ/Π_MANIFEST.sha256")
-    (changed_file ".ημ/Π_STATE.sexp")
-    (changed_file ".ημ/REPO_STATE_HASH")
-    (changed_file "receipts.log")
-    (changed_file "scripts/benchmark_openai_speech.py")
-    (changed_file "specs/drafts/big-ussy-ussy2-melo-postprocess-benchmark.md")
-  )
-)
+(handoff
+  (kind eta-mu-kanban-migration)
+  (time "2026-05-29T04:03:45Z")
+  (batch "/tmp/eta-mu-kanban-batches/agent_open_hax_other.json")
+  (repo "voxx")
+  (verification "eta-mu-beta kanban count --tasks-dir for each board")
+  (boards
+    "kanban"
+  ))

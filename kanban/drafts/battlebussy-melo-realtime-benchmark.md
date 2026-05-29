@@ -1,3 +1,17 @@
+---
+uuid: "orgs-open-hax-archived-voxx-kanban-orgs-open-hax-archived-voxx-specs-drafts-battlebussy-melo-realtime-benchmark-md"
+title: "Voxx Melo deployment + Battlebussy realtime benchmark"
+status: incoming
+priority: P3
+labels: ["specs", "migrated-spec"]
+created_at: "2026-05-29T04:01:22.559Z"
+source: "orgs/open-hax/archived/voxx/specs/drafts/battlebussy-melo-realtime-benchmark.md"
+category: "specs"
+---
+
+> Source: `orgs/open-hax/archived/voxx/specs/drafts/battlebussy-melo-realtime-benchmark.md`
+> Migrated-to-kanban: `orgs/open-hax/archived/voxx/kanban/drafts/battlebussy-melo-realtime-benchmark.md`
+
 # Voxx Melo deployment + Battlebussy realtime benchmark
 
 ## Status

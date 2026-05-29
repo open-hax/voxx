@@ -1,3 +1,17 @@
+---
+uuid: "orgs-open-hax-archived-voxx-kanban-orgs-open-hax-archived-voxx-specs-drafts-sports-commentator-postprocess-md"
+title: "Voxx sports commentator postprocess"
+status: incoming
+priority: P3
+labels: ["specs", "migrated-spec"]
+created_at: "2026-05-29T04:01:22.562Z"
+source: "orgs/open-hax/archived/voxx/specs/drafts/sports-commentator-postprocess.md"
+category: "specs"
+---
+
+> Source: `orgs/open-hax/archived/voxx/specs/drafts/sports-commentator-postprocess.md`
+> Migrated-to-kanban: `orgs/open-hax/archived/voxx/kanban/drafts/sports-commentator-postprocess.md`
+
 # Voxx sports commentator postprocess
 
 ## Status
